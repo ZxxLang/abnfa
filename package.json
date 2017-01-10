@@ -1,0 +1,29 @@
+{
+  "name": "abnfa",
+  "version": "0.1.0",
+  "description": "ABNF Actions syntax for directly generating an AST",
+  "main": "bin/abnfa",
+  "scripts": {
+    "test": "tap tests/*.js --cov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZxxLang/abnfa.git"
+  },
+  "keywords": [
+    "ABNF",
+    "AST",
+    "parser",
+    "parse"
+  ],
+  "author": "YU HengChun",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/ZxxLang/abnfa/issues"
+  },
+  "homepage": "https://github.com/ZxxLang/abnfa",
+  "devDependencies": {
+    "tap": "^9.0.3"
+  },
+  "dependencies": {}
+}

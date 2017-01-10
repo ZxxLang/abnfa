@@ -1,0 +1,122 @@
+; ABNFA Definition of ABNF
+
+; fork RFC 7405
+
+rulelist       =  1*( rule-Rule--append / (*c-wsp c-nl) )
+                ; 1*( rule-Rule--append / comment-Comment-comments- )
+
+rule           =  rulename--name defined-as elements c-nl
+                    ; continues if next line starts
+                    ;  with white space
+
+rulename       =  ALPHA *(ALPHA / DIGIT / "-")
+
+def-inc        =  "=" / "=/"
+
+defined-as     =  *c-wsp def-inc--kind *c-wsp
+                    ; basic rules definition and
+                    ;  incremental alternatives
+
+elements       =  alternation-Choice-alts- *c-wsp
+
+c-wsp          =  WSP / (c-nl WSP)
+
+c-nl           =  comment-nl / CRLF
+                    ; rewrite
+
+comment-nl     =  comment-Comment-comments- CRLF
+                    ; rewrite
+
+comment        =  ";" *(WSP / VCHAR)
+                    ; rewrite
+
+alternation    =  concatenation-Serial-seqs-
+               *(*c-wsp "/" *c-wsp concatenation-Serial-seqs-)
+
+concatenation  =  repetition *(1*c-wsp repetition)
+
+repetition     =  option / ([repeat-Repeat-rep] element-rule)
+
+repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
+
+element        =  rulename--ref / group /
+               char-val-node / num-val / prose-val-node
+
+group          =  "(" *c-wsp alternation-Choice-alts- *c-wsp ")"
+
+option         =  "[" *c-wsp alternation-Choice-alts- *c-wsp "]"
+
+num-val        =  ("%b" bin-node-text) /
+                ("%d" dec-node-text) /
+                ("%x" hex-node-text)
+                ; rewrite for abnfa
+
+bin            =  1*BIT
+               [ 1*("." 1*BIT) / ("-" 1*BIT) ]
+                    ; series of concatenated bit values
+                    ;  or single ONEOF range
+
+dec            =  1*DIGIT
+               [ 1*("." 1*DIGIT) / ("-" 1*DIGIT) ]
+
+hex            =  1*HEXDIG
+               [ 1*("." 1*HEXDIG) / ("-" 1*HEXDIG) ]
+
+prose-val      =  "<" prose-text  ">"
+                    ; bracketed string of SP and VCHAR
+                    ;  without angles
+                    ; prose description, to be used as
+                    ;  last resort
+
+prose          = *(%x20-3D / %x3F-7E)
+
+; fork RFC 7405
+
+char-val        =  case-insensitive-string /
+                case-sensitive-string
+
+case-insensitive-string =
+                        insensitive-insensitive-true quoted-string
+                            ; rewrite for abnfa
+
+insensitive     = "%i"
+
+case-sensitive-string = [ sensitive-insensitive-false ] quoted-string
+                        ; quoted-string is case-sensitive-string
+                        ; rewrite for abnfa
+
+sensitive       = "%s"
+
+quoted-string   =  DQUOTE string-text  DQUOTE
+                    ; quoted string of SP and VCHAR
+                    ;  without DQUOTE
+
+string          = *(%x20-21 / %x23-7E)
+
+; Core Rules
+
+CRLF    =  (%x0D %x0A) / %x0D / %x0A
+
+ALPHA   =  %x41-5A / %x61-7A   ; A-Z / a-z
+
+BIT     =  %x30-31
+
+CHAR    =  %x01-7F
+
+; CTL     =  %x00-1F / %x7F
+
+DIGIT   =  BIT / %x32-39 ; 0-9
+
+DQUOTE  =  %x22    ; " (Double Quote)
+
+HEXDIG  =  DIGIT / %x41-46 / %x61-66 ; 0-9A-Fa-f
+
+SP      =  %x20
+
+HTAB    =  %x09
+
+; OCTET   =  %x00-FF ; 8 bits of data
+
+WSP     =  SP / HTAB
+
+VCHAR   =  %x21-7E
