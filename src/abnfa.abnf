@@ -2,22 +2,24 @@
 
 ; fork RFC 7405
 
-rulelist       =  1*( rule-Rule--post / (*cwsp cnl) )
-                ; 1*( rule-Rule--post / comment-Comment-comments- )
+rulelist       =  1*( rule-Rule--push / (*cwsp cnl) )
+                ; 1*( rule-Rule--push / comment-Comment-comments- )
 
-rule           =  rulename definedas elements cnl
+rule           =  rulename--name definedas elements cnl
                     ; continues if next line starts
                     ;  with white space
 
-rulename       =  ALPHA *(ALPHA / DIGIT / "-")
+rulename       =  ALPHA *(ALPHA / DIGIT)
+
+refname        =  ALPHA *(ALPHA / DIGIT / "-")
 
 defInc         =  "=" / "=/"
 
-definedas      =  *cwsp defInc--kind *cwsp
+definedas      =  *cwsp defInc---kind *cwsp
                     ; basic rules definition and
                     ;  incremental alternatives
 
-elements       =  alternation-Choice-alts- *cwsp
+elements       =  alternation-Choice--push *cwsp
 
 cwsp           =  WSP / (cnl WSP)
 
@@ -27,42 +29,57 @@ cnl            =  commentnl / CRLF
 commentnl      =  comment-Comment-comments- CRLF
                     ; rewrite
 
-comment        =  ";" *(WSP / VCHAR)
-                    ; rewrite
+comment        =  ";" commentLit--raw
 
-alternation    =  concatenation-Serial-seqs-
-               *(*cwsp "/" *cwsp concatenation-Serial-seqs-)
+commentLit     =  *(WSP / VCHAR)
+
+alternation    =  concatenation-Serial--push
+               *(*cwsp "/" *cwsp concatenation-Serial--push)
+
 
 concatenation  =  repetition *(1*cwsp repetition)
 
-repetition     =  option / ([repeat-Repeat-rep] element-rule)
+repetition     =  option-Choice / ([repeat-Repeat-rep] element)
 
 repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
 
-element        =  rulename--ref / group /
-               charLit-node / num / proseLit-node
+element        =  refname-Ref / group-Choice /
+               charLit-Text / binary-Binary / range-Range / proseLit-Text
 
-group          =  "(" *cwsp alternation-Choice-alts- *cwsp ")"
+group          =  "(" *cwsp alternation---push *cwsp ")"
 
-option         =  "[" *cwsp alternation-Choice-alts- *cwsp "]"
+option         =  "[" *cwsp alternation---push *cwsp "]"
 
-num            =  ("%b" bin-node-text) /
-                ("%d" dec-node-text) /
-                ("%x" hex-node-text)
-                ; rewrite for abnfa
+b              = "b"
 
-bin            =  1*BIT
-               [ 1*("." 1*BIT) / ("-" 1*BIT) ]
-                    ; series of concatenated bit values
-                    ;  or single ONEOF range
+d              = "d"
 
-dec            =  1*DIGIT
-               [ 1*("." 1*DIGIT) / ("-" 1*DIGIT) ]
+x              = "x"
 
-hex            =  1*HEXDIG
-               [ 1*("." 1*HEXDIG) / ("-" 1*HEXDIG) ]
 
-proseLit       =  "<" prose-text  ">"
+binary         = "%" (b--formal bin / d--formal dec / x--formal hex)
+
+range          = "%" (b--formal binRange / d--formal decRange / x--formal hexRange)
+
+binLit         =  1*BIT
+
+decLit         =  1*DIGIT
+
+hexLit         =  1*HEXDIG
+
+bin            =  binLit--seqs- [ 1*("." binLit--seqs-) ]
+
+dec            =  decLit--seqs- [ 1*("." decLit--seqs-) ]
+
+hex            =  hexLit--seqs- [ 1*("." hexLit--seqs-) ]
+
+binRange       =  binLit--first [ ("-" binLit--last) ]
+
+decRange       =  decLit--first [ ("-" decLit--last) ]
+
+hexRange       =  hexLit--first [ ("-" hexLit--last) ]
+
+proseLit       =  "<" prose--raw  ">"
                     ; bracketed string of SP and VCHAR
                     ;  without angles
                     ; prose description, to be used as
@@ -72,20 +89,20 @@ prose          = *(%x20-3D / %x3F-7E)
 
 ; fork RFC 7405
 
-charLal        =  insensitiveLit / sensitiveLit
+charLit         =  insensitiveLit / sensitiveLit
 
-insensitiveLit  = insensitive-insensitive-true quotedLit
+insensitiveLit  = "%" insensitive--formal quotedLit
                     ; rewrite for abnfa
 
-insensitive     = "%i"
+insensitive     = "i"
 
-sensitiveLit    = [ sensitive-insensitive-false ] quotedLit
+sensitiveLit    = [ "%" sensitive--formal ] quotedLit
                         ; quoted-string is case-sensitive-string
                         ; rewrite for abnfa
 
-sensitive       = "%s"
+sensitive       = "s"
 
-quotedLit       =  DQUOTE string-text  DQUOTE
+quotedLit       =  DQUOTE string--raw  DQUOTE
                     ; quoted string of SP and VCHAR
                     ;  without DQUOTE
 
@@ -99,7 +116,7 @@ ALPHA   =  %x41-5A / %x61-7A   ; A-Z / a-z
 
 BIT     =  %x30-31
 
-CHAR    =  %x01-7F
+; CHAR    =  %x01-7F
 
 ; CTL     =  %x00-1F / %x7F
 
