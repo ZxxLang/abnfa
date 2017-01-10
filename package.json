@@ -1,6 +1,6 @@
 {
   "name": "abnfa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ABNF Actions syntax for directly generating an AST",
   "main": "bin/abnfa",
   "scripts": {
@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/ZxxLang/abnfa",
   "devDependencies": {
+    "binarysearch": "^1.0.0",
     "tap": "^9.0.3"
   },
   "dependencies": {}

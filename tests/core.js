@@ -217,5 +217,5 @@ test('analyze', function(t) {
 	t.deepEqual(bare.undefs, ['c', 'x'], 'undefs')
 	t.deepEqual(bare.unrefs, ['d'], 'unrefs')
 	t.deepEqual(bare.literals, ['string'], 'literals')
-	t.deepEqual(bare.terminals, ['b', 'c', 'x'], 'terminals')
+	t.deepEqual(bare.terminals, ['a', 'b', 'c', 'd', 'x'], 'terminals')
 });

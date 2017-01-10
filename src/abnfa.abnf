@@ -2,51 +2,51 @@
 
 ; fork RFC 7405
 
-rulelist       =  1*( rule-Rule--append / (*c-wsp c-nl) )
-                ; 1*( rule-Rule--append / comment-Comment-comments- )
+rulelist       =  1*( rule-Rule--post / (*cwsp cnl) )
+                ; 1*( rule-Rule--post / comment-Comment-comments- )
 
-rule           =  rulename--name defined-as elements c-nl
+rule           =  rulename definedas elements cnl
                     ; continues if next line starts
                     ;  with white space
 
 rulename       =  ALPHA *(ALPHA / DIGIT / "-")
 
-def-inc        =  "=" / "=/"
+defInc         =  "=" / "=/"
 
-defined-as     =  *c-wsp def-inc--kind *c-wsp
+definedas      =  *cwsp defInc--kind *cwsp
                     ; basic rules definition and
                     ;  incremental alternatives
 
-elements       =  alternation-Choice-alts- *c-wsp
+elements       =  alternation-Choice-alts- *cwsp
 
-c-wsp          =  WSP / (c-nl WSP)
+cwsp           =  WSP / (cnl WSP)
 
-c-nl           =  comment-nl / CRLF
+cnl            =  commentnl / CRLF
                     ; rewrite
 
-comment-nl     =  comment-Comment-comments- CRLF
+commentnl      =  comment-Comment-comments- CRLF
                     ; rewrite
 
 comment        =  ";" *(WSP / VCHAR)
                     ; rewrite
 
 alternation    =  concatenation-Serial-seqs-
-               *(*c-wsp "/" *c-wsp concatenation-Serial-seqs-)
+               *(*cwsp "/" *cwsp concatenation-Serial-seqs-)
 
-concatenation  =  repetition *(1*c-wsp repetition)
+concatenation  =  repetition *(1*cwsp repetition)
 
 repetition     =  option / ([repeat-Repeat-rep] element-rule)
 
 repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
 
 element        =  rulename--ref / group /
-               char-val-node / num-val / prose-val-node
+               charLit-node / num / proseLit-node
 
-group          =  "(" *c-wsp alternation-Choice-alts- *c-wsp ")"
+group          =  "(" *cwsp alternation-Choice-alts- *cwsp ")"
 
-option         =  "[" *c-wsp alternation-Choice-alts- *c-wsp "]"
+option         =  "[" *cwsp alternation-Choice-alts- *cwsp "]"
 
-num-val        =  ("%b" bin-node-text) /
+num            =  ("%b" bin-node-text) /
                 ("%d" dec-node-text) /
                 ("%x" hex-node-text)
                 ; rewrite for abnfa
@@ -62,7 +62,7 @@ dec            =  1*DIGIT
 hex            =  1*HEXDIG
                [ 1*("." 1*HEXDIG) / ("-" 1*HEXDIG) ]
 
-prose-val      =  "<" prose-text  ">"
+proseLit       =  "<" prose-text  ">"
                     ; bracketed string of SP and VCHAR
                     ;  without angles
                     ; prose description, to be used as
@@ -72,22 +72,20 @@ prose          = *(%x20-3D / %x3F-7E)
 
 ; fork RFC 7405
 
-char-val        =  case-insensitive-string /
-                case-sensitive-string
+charLal        =  insensitiveLit / sensitiveLit
 
-case-insensitive-string =
-                        insensitive-insensitive-true quoted-string
-                            ; rewrite for abnfa
+insensitiveLit  = insensitive-insensitive-true quotedLit
+                    ; rewrite for abnfa
 
 insensitive     = "%i"
 
-case-sensitive-string = [ sensitive-insensitive-false ] quoted-string
+sensitiveLit    = [ sensitive-insensitive-false ] quotedLit
                         ; quoted-string is case-sensitive-string
                         ; rewrite for abnfa
 
 sensitive       = "%s"
 
-quoted-string   =  DQUOTE string-text  DQUOTE
+quotedLit       =  DQUOTE string-text  DQUOTE
                     ; quoted string of SP and VCHAR
                     ;  without DQUOTE
 
