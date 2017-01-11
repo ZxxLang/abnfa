@@ -3,31 +3,20 @@
 ; fork RFC 7405
 
 rulelist       =  1*( rule-Rule--push / (*cwsp cnl) )
-                ; 1*( rule-Rule--push / comment-Comment-comments- )
 
-rule           =  rulename--name definedas elements cnl
-                    ; continues if next line starts
-                    ;  with white space
+rule           =  rulename--name definedAs elements cnl
 
 rulename       =  ALPHA *(ALPHA / DIGIT)
 
-refname        =  ALPHA *(ALPHA / DIGIT / "-")
-
 defInc         =  "=" / "=/"
 
-definedas      =  *cwsp defInc---kind *cwsp
-                    ; basic rules definition and
-                    ;  incremental alternatives
+definedAs      =  *cwsp defInc---kind *cwsp
 
 elements       =  alternation-Choice--push *cwsp
 
 cwsp           =  WSP / (cnl WSP)
 
-cnl            =  commentnl / CRLF
-                    ; rewrite
-
-commentnl      =  comment-Comment-comments- CRLF
-                    ; rewrite
+cnl            =  [comment-Comment-comments-] CRLF
 
 comment        =  ";" commentLit--raw
 
@@ -36,15 +25,20 @@ commentLit     =  *(WSP / VCHAR)
 alternation    =  concatenation-Serial--push
                *(*cwsp "/" *cwsp concatenation-Serial--push)
 
-
 concatenation  =  repetition *(1*cwsp repetition)
 
 repetition     =  option-Choice / ([repeat-Repeat-rep] element)
 
 repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
 
-element        =  refname-Ref / group-Choice /
-               charLit-Text / binary-Binary / range-Range / proseLit-Text
+action         =  1*(ALPHA / DIGIT / "-")
+
+actions        =  rulename--ref
+                  ["-" [rulename--produce] [action--action]]
+
+element        =  actions-Ref / group-Choice /
+                  charLit-Text / binary-Binary /
+                  range-Range / proseLit-Text
 
 group          =  "(" *cwsp alternation---push *cwsp ")"
 
@@ -57,9 +51,13 @@ d              = "d"
 x              = "x"
 
 
-binary         = "%" (b--formal bin / d--formal dec / x--formal hex)
+binary         = "%" (  b--formal bin /
+                        d--formal dec /
+                        x--formal hex )
 
-range          = "%" (b--formal binRange / d--formal decRange / x--formal hexRange)
+range          = "%" (  b--formal binRange /
+                        d--formal decRange /
+                        x--formal hexRange )
 
 binLit         =  1*BIT
 
@@ -80,10 +78,6 @@ decRange       =  decLit--first [ ("-" decLit--last) ]
 hexRange       =  hexLit--first [ ("-" hexLit--last) ]
 
 proseLit       =  "<" prose--raw  ">"
-                    ; bracketed string of SP and VCHAR
-                    ;  without angles
-                    ; prose description, to be used as
-                    ;  last resort
 
 prose          = *(%x20-3D / %x3F-7E)
 
@@ -92,19 +86,14 @@ prose          = *(%x20-3D / %x3F-7E)
 charLit         =  insensitiveLit / sensitiveLit
 
 insensitiveLit  = "%" insensitive--formal quotedLit
-                    ; rewrite for abnfa
 
 insensitive     = "i"
 
 sensitiveLit    = [ "%" sensitive--formal ] quotedLit
-                        ; quoted-string is case-sensitive-string
-                        ; rewrite for abnfa
 
 sensitive       = "s"
 
 quotedLit       =  DQUOTE string--raw  DQUOTE
-                    ; quoted string of SP and VCHAR
-                    ;  without DQUOTE
 
 string          = *(%x20-21 / %x23-7E)
 
