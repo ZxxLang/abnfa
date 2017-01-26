@@ -25,7 +25,5 @@
   "devDependencies": {
     "tap": "^9.0.3"
   },
-  "dependencies": {
-    "binarysearch": "^1.0.0"
-  }
+  "dependencies": {}
 }

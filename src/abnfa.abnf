@@ -2,47 +2,52 @@
 
 ; fork RFC 7405
 
-rulelist       =  1*( rule-Rule--push / (*cwsp cnl) )
+ast            =  1*( rule-Rule-patch-defs-name / (*cwsp cnl) )
 
-rule           =  rulename--name definedAs elements cnl
+name           =  ALPHA *(ALPHA / DIGIT)
 
-rulename       =  ALPHA *(ALPHA / DIGIT)
+rule           =  name--name definedAs elements cnl
 
 defInc         =  "=" / "=/"
 
-definedAs      =  *cwsp defInc---kind *cwsp
+definedAs      =  *cwsp defInc--flag *cwsp
 
-elements       =  alternation-Choice--push *cwsp
+elements       =  alternation-Choice-push-alts *cwsp
 
 cwsp           =  WSP / (cnl WSP)
 
-cnl            =  [comment-Comment-comments-] CRLF
+cnl            =  [comment-Comment-push-comments] CRLF
 
-comment        =  ";" commentLit--raw
+comment        =  commentLit--raw
 
-commentLit     =  *(WSP / VCHAR)
+commentLit     =  ";" *(WSP / VCHAR)
 
-alternation    =  concatenation-Serial--push
-               *(*cwsp "/" *cwsp concatenation-Serial--push)
+alternation    =  concatenation-Serial-push-alts
+               *(*cwsp "/" *cwsp concatenation-Serial-push-alts)
 
 concatenation  =  repetition *(1*cwsp repetition)
 
-repetition     =  option-Choice / ([repeat-Repeat-rep] element)
+repetition     =  option--push-seqs / ([repeat-Repeat-rep] element--push-seqs)
 
 repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
 
-action         =  1*(ALPHA / DIGIT / "-")
-
-actions        =  rulename--ref
-                  ["-" [rulename--produce] [action--action]]
-
-element        =  actions-Ref / group-Choice /
+element        =  ref-Ref / group /
                   charLit-Text / binary-Binary /
                   range-Range / proseLit-Text
 
-group          =  "(" *cwsp alternation---push *cwsp ")"
+group          =  "(" *cwsp alternation-Choice *cwsp ")"
 
-option         =  "[" *cwsp alternation---push *cwsp "]"
+option         =  "[" *cwsp alternation-Choice *cwsp "]"
+
+ref            =  name--ref ["-" action-Action-action]
+
+action         =  name--produce [
+                  "-" [name--method] [
+                  "-" [name--property] [
+                  "-" [extra--extra]
+                  ]]]
+
+extra          =  ALPHA *(ALPHA / DIGIT / "-")
 
 b              = "b"
 
@@ -65,11 +70,11 @@ decLit         =  1*DIGIT
 
 hexLit         =  1*HEXDIG
 
-bin            =  binLit--seqs- [ 1*("." binLit--seqs-) ]
+bin            =  binLit--push-seqs [ 1*("." binLit--push-seqs) ]
 
-dec            =  decLit--seqs- [ 1*("." decLit--seqs-) ]
+dec            =  decLit--push-seqs [ 1*("." decLit--push-seqs) ]
 
-hex            =  hexLit--seqs- [ 1*("." hexLit--seqs-) ]
+hex            =  hexLit--push-seqs [ 1*("." hexLit--push-seqs) ]
 
 binRange       =  binLit--first [ ("-" binLit--last) ]
 
@@ -109,7 +114,7 @@ BIT     =  %x30-31
 
 ; CTL     =  %x00-1F / %x7F
 
-DIGIT   =  BIT / %x32-39 ; 0-9
+DIGIT   =  %x30-39 ; 0-9
 
 DQUOTE  =  %x22    ; " (Double Quote)
 

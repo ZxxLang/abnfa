@@ -80,11 +80,11 @@ test('tokenize c-nl', function(t) {
 	];
 
 	tests.forEach(function(s, i) {
-		t.type(core.tokenize(s), Array)
+		t.errify(core.tokenize(s))
 	})
 });
 
-test('tokenize num range', function(t) {
+test('tokenize num range', function(t, dump) {
 	var tests = [
 		'r = %b0101-1000',
 		'r = %b0101.1000',
@@ -95,24 +95,26 @@ test('tokenize num range', function(t) {
 	];
 
 	tests.forEach(function(s, i) {
-		t.type(core.tokenize(s), Array)
+		var rules = core.tokenize(s, core.Entries, core.Rules)
+		t.errify(rules)
 	})
 });
 
 test('calculator', function(t) {
-	var text = '\
-		Expr   = Term   *Sum\n\
-		Term   = Factor *Mul\n\
-		Sum    = SumOp  Term\n\
-		Mul    = MulOp  Factor\n\
-		Factor = Num / "(" Expr ")"\n\
-		SumOp  = "+" / "-"\n\
-		MulOp  = "*" / "/"\n\
-		Num    = 1*(%x32-39)'
+	var text = [
+		'Expr   = Term   *Sum',
+		'Term   = Factor *Mul',
+		'Sum    = SumOp  Term',
+		'Mul    = MulOp  Factor',
+		'Factor = Num / "(" Expr ")"',
+		'SumOp  = "+" / "-"',
+		'MulOp  = "*" / "/"',
+		'Num    = 1*(%x30-39)'
+	].join('\n')
 
 	var rules = core.tokenize(text, core.Entries, core.Rules);
 
-	t.type(rules, core.Rules, rules)
+	t.errify(rules)
 });
 
 test('rule unexpected', function(t) {
@@ -184,16 +186,16 @@ test('rule reduce', function(t) {
 function rules(tests) {
 	var expected, t = this;
 	tests.forEach(function(s) {
-		var rules = new core.Rules()
+		var cr = new core.Rules()
 		var entries = core.tokenize(s, core.Entries)
 
 		t.type(entries, Array)
 
 		entries.forEach(function(toks) {
-			t.same(rules.retrans(toks), null)
+			t.same(cr.retrans(toks), null)
 		})
 
-		var actual = rules.retrans(null).bare().defs;
+		var actual = cr.retrans(null);
 
 		expected = expected || actual;
 
@@ -203,19 +205,18 @@ function rules(tests) {
 	//t.ok(0, 'dump', expected)
 }
 
-test('analyze', function(t) {
+test('rules', function(t) {
 	var text = '\
 		r = a b\n\
 		b = %s"string"\n\
 		a = c\n\
 		d = x'
-	var rules = core.tokenize(text, core.Entries, core.Rules);
 
-	t.type(rules, core.Rules, rules)
+	var bare = core.tokenize(text, core.Entries, core.Rules);
 
-	var bare = rules.analyze();
+	t.errify(bare)
+
 	t.deepEqual(bare.undefs, ['c', 'x'], 'undefs')
 	t.deepEqual(bare.unrefs, ['d'], 'unrefs')
 	t.deepEqual(bare.literals, ['string'], 'literals')
-	t.deepEqual(bare.terminals, ['a', 'b', 'c', 'd', 'x'], 'terminals')
 });
