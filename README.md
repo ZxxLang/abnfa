@@ -24,8 +24,8 @@ definedAs      =  *cwsp defInc---kind *cwsp
 elements       =  alternation-Choice--push *cwsp
 
 cnl            =  [comment-Comment-comments-] CRLF
-comment        =  ";" commentLit--raw
-commentLit     =  *(WSP / VCHAR)
+comment        =  commentLit--raw
+commentLit     =  ";" *(WSP / VCHAR)
 
 alternation    =  concatenation-Serial--push
                   *(*cwsp "/" *cwsp concatenation-Serial--push)

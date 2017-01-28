@@ -1,15 +1,12 @@
 {
   "name": "abnfa",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "ABNF Actions syntax for directly generating an AST",
   "main": "bin/abnfa",
   "scripts": {
     "test": "tap tests/*.js --cov"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ZxxLang/abnfa.git"
-  },
+  "repository": "git+https://github.com/ZxxLang/abnfa.git",
   "keywords": [
     "ABNF",
     "AST",

@@ -29,14 +29,6 @@ var grammarThousands = [
 		'SumOp  = "+" / "-"',
 		'MulOp  = "*" / "/"',
 		'Num    = 1*(%x30-39)'
-	].join('\n'),
-	grammarCalculator2 = [
-		'rules  = Factor---left *(Op---op Factor---right)',
-		'Factor = Num-Number-term / "(" rules-Expr ")"',
-		'Op     = SumOp / MulOp',
-		'SumOp  = "+" / "-"',
-		'MulOp  = "*" / "/"',
-		'Num    = 1*(%x30-39)'
 	].join('\n');
 
 test('actions property', function(t, dump) {
@@ -86,6 +78,7 @@ test('actions property', function(t, dump) {
 });
 
 test('actions calculator', function(t, dump) {
+
 	[
 		grammarCalculator,
 		'ast = rules-Expr\n' + grammarCalculator,
@@ -105,7 +98,6 @@ test('actions calculator', function(t, dump) {
 				expected = a[1],
 				actual = '',
 				product = actions.parse(src);
-
 			t.errify(product)
 
 			product.forEach(function(p) {
@@ -114,8 +106,13 @@ test('actions calculator', function(t, dump) {
 				p.action = Object.assign(Object.create(null), p.action)
 			})
 			t.equal(actual, expected, 'calculator', product)
-			// dump(src)
-			// dump(product)
+			if (src == '(1+2)*3') dump(product);
 		})
 	})
 })
+
+
+function precedence(left) {
+	["left", "op", "+", "-"]
+	["left", "op", "*", "/"]
+}
