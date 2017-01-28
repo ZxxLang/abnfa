@@ -57,13 +57,13 @@ ABNFA 定义的 action 语义:
 
 1. produce   表示要生成对象的类型名称
 2. method    处理方法
-    1. term      保留方法, 用于终结符, 合并匹配的字符串.
+    1. term      保留方法, 与其它互斥, 用于终结符, 合并匹配的字符串.
     2. assign    表示对属性赋值一次.
     3. patch     表示属性是个对象, 执行 key/value 赋值
     4. push      表示属性是个数组, 向数组添加元素
     5. true      表示对属性赋布尔值 true
     6. false     表示对属性赋布尔值 false
-    7. flag      独立方法, 与其它互斥, 提取匹配字符串到可选参数数组.
+    7. flag      保留方法, 与其它互斥, 提取匹配字符串到可选参数数组.
 3. property  表示被赋值的属性名, 缺省方法名为 assign
 4. extra     扩展参数. 目前仅 patch 方法支持 extra 表示的提取 key.
 
@@ -122,33 +122,25 @@ output:
   action:
     produce: Number
     method: push
-- start: 0
-  end: 5
   raw: '0234'
-  action:
-    produce: ''
-    method: term
 - null
 - start: 6
   end: 9
   action:
     produce: Number
     method: push
-- start: 6
-  end: 9
   raw: '678'
-  action:
-    produce: ''
-    method: term
+- null
 ```
+
+该数组中的 'method: "term"' 没有了, 被合并到上级 produce.
 
 该数组的顺序就是对 AST 构建过程的描述:
 
 0. 生成 Number 对象作为 current 对象, 并 push 到 parent
-1. 对 current 进行赋值 raw('0234'), 因 !produce, parent 和 current 不变.
-2. 弹出 current, parent 不变
-3. 生成 Number 对象作为 current 对象, 并 push 到 parent
-4. 对 current 进行赋值 raw('678'),  因 !produce, parent 和 current 不变.
+1. 弹出 current, parent 不变
+2. 生成 Number 对象作为 current 对象, 并 push 到 parent
+3. 弹出 current, parent 不变
 
 通常生成一个对象显然要对它进行(属性)赋值, 因此 push 到 parent 要到 current 或 parent 发生改变(弹出)时才执行.
 
@@ -172,13 +164,8 @@ Num    = 1*(%x30-39)
   end: 1
   action:
     produce: Number
-  raw: '1'
-- start: 0
-  end: 1
-  action:
-    produce: ''
-    method: ''
     property: left
+  raw: '1'
 - null
 - start: 1
   end: 2
@@ -192,13 +179,8 @@ Num    = 1*(%x30-39)
   end: 3
   action:
     produce: Number
-  raw: '2'
-- start: 2
-  end: 3
-  action:
-    produce: ''
-    method: ''
     property: right
+  raw: '2'
 - null
 - start: 3
   end: 4
@@ -212,13 +194,9 @@ Num    = 1*(%x30-39)
   end: 5
   action:
     produce: Number
-  raw: '3'
-- start: 4
-  end: 5
-  action:
-    produce: ''
-    method: ''
     property: right
+  raw: '3'
+- null
 ```
 
 不能省略 `Op-String--op` 中的 `String`, 它能产生正确的弹出元素 null.

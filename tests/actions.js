@@ -7,12 +7,6 @@ var grammarThousands = [
 		'DIGIT     = %x30-39',
 		'SP        = %x20'
 	].join('\n'),
-	grammarThousands2 = [
-		'rules     = 1*(thousands--push [SP])',
-		'thousands = 1*3DIGIT-Number-term *("," 3DIGIT-Number-term)',
-		'DIGIT     = %x30-39',
-		'SP        = %x20'
-	].join('\n'),
 	grammarActions = [
 		'rules   = name---ref ["-" action-Action--action]',
 		'name    = ALPHA *(ALPHA / DIGIT)',
@@ -42,14 +36,6 @@ test('actions property', function(t, dump) {
 			'0,234 678', '0234678', 'thousands-Array'
 		],
 		[
-			grammarThousands2,
-			'0,234 678', '0234678', 'thousands2'
-		],
-		[
-			'ast = rules-Array\n' + grammarThousands2,
-			'0,234 678', '0234678', 'thousands2-Array'
-		],
-		[
 			grammarActions,
 			'name-produce-method-property-extra', 'nameproducemethodpropertyextra', 'actions'
 		],
@@ -74,6 +60,7 @@ test('actions property', function(t, dump) {
 			p.action = Object.assign(Object.create(null), p.action)
 		})
 		t.equal(actual, expected, message, product)
+		//if (message == 'thousands') dump(product);
 	});
 });
 
@@ -106,13 +93,7 @@ test('actions calculator', function(t, dump) {
 				p.action = Object.assign(Object.create(null), p.action)
 			})
 			t.equal(actual, expected, 'calculator', product)
-			if (src == '(1+2)*3') dump(product);
+				//if (src == '1+2*3') dump(product);
 		})
 	})
 })
-
-
-function precedence(left) {
-	["left", "op", "+", "-"]
-	["left", "op", "*", "/"]
-}
