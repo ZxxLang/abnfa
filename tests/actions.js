@@ -60,6 +60,7 @@ test('actions property', function(t, dump) {
 			p.action = Object.assign(Object.create(null), p.action)
 		})
 		t.equal(actual, expected, message, product)
+
 		//if (message == 'thousands') dump(product);
 	});
 });
@@ -93,7 +94,8 @@ test('actions calculator', function(t, dump) {
 				p.action = Object.assign(Object.create(null), p.action)
 			})
 			t.equal(actual, expected, 'calculator', product)
-				//if (src == '1+2*3') dump(product);
+
+			//if (src == '(1+2)*3') dump(product);
 		})
 	})
 })
