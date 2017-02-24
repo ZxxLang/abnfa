@@ -2,100 +2,88 @@ var test = require('./test'),
 	core = require('../lib/core');
 
 var grammarThousands = [
-		'rules     = 1*(thousands-Number-push [SP])',
+		'Array     = 1*(thousands-Number-to--list [SP])',
 		'thousands = 1*3DIGIT--term *("," 3DIGIT--term)',
 		'DIGIT     = %x30-39',
 		'SP        = %x20'
 	].join('\n'),
 	grammarActions = [
-		'rules   = name---ref ["-" action-Action--action]',
+		'Ref     = name--term-ref ["-" action-Action-to-action]',
 		'name    = ALPHA *(ALPHA / DIGIT)',
-		'action  = [name---produce] [',
-		'          "-" [name---method] [',
-		'          "-" [name---property] [',
-		'          "-" [name---extra]]]]',
+		'action  = [name--term-produce] [',
+		'          "-" [name--term-method] [',
+		'          "-" [name--term-key] [',
+		'          "-" [name--term-flag]]]]',
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarCalculator = [
-		'rules  = Factor---left *(Op-String--op Factor---right)',
-		'Factor = Num-Number / "(" rules-Expr ")"',
-		'Op     = SumOp / MulOp',
-		'SumOp  = "+" / "-"',
-		'MulOp  = "*" / "/"',
-		'Num    = 1*(%x30-39)'
+		'Expr   = factor--to-left *(op--term-operator-PREC factor--to-right)',
+		'factor = *sign--mix-sign ( Num-Number-term / "(" Expr-Expr ")" )',
+		'op     = "+" / "-" / "*" / "/"',
+		'sign   = "+" / "-"',
+		'Num    = 1*(%x30-39)',
+		'PRECEDENCES = "%binary" "+" "-" / "%binary" "*" "/"'
 	].join('\n');
 
 test('actions property', function(t, dump) {
 	[
 		[
 			grammarThousands,
-			'0,234 678', '0234678', 'thousands'
-		],
-		[
-			'ast = rules-Array\n' + grammarThousands,
-			'0,234 678', '0234678', 'thousands-Array'
+			'0,234 678', '0234 678', 'thousands'
 		],
 		[
 			grammarActions,
-			'name-produce-method-property-extra', 'nameproducemethodpropertyextra', 'actions'
-		],
-		[
-
-			'ast = rules-Ref\n' + grammarActions,
-			'name-produce-method-property-extra', 'nameproducemethodpropertyextra', 'actions-Ref'
+			'name-produce-method-key-flag', 'name produce method key flag', 'actions'
 		],
 	].forEach(function(a, i) {
 		var abnf = a[0],
 			src = a[1],
 			expected = a[2],
 			message = a[3] || i,
-			actual = '',
+			actual = [],
 			actions = new core.Actions(src),
 			product = core.tokenize(abnf, core.Entries, core.Rules, actions);
 
 		t.errify(product, message)
 		product.forEach(function(p) {
 			if (!p) return;
-			if (p.raw) actual += p.raw
+			if (p.raw) actual.push(p.raw)
 			p.action = Object.assign(Object.create(null), p.action)
 		})
-		t.equal(actual, expected, message, product)
+		t.equal(actual.join(' '), expected, message, product)
 
-		//if (message == 'thousands') dump(product);
+		// if (message == 'actions')
+		//	dump(product);
 	});
 });
 
 test('actions calculator', function(t, dump) {
+	var actions,
+		rules = core.tokenize(grammarCalculator, core.Entries, core.Rules);
+
+	t.errify(rules);
+	actions = new core.Actions(rules);
 
 	[
-		grammarCalculator,
-		'ast = rules-Expr\n' + grammarCalculator,
-	].forEach(function(grammar) {
+		['-2*3', '- 2 * 3'],
+		['-+2*3', '-+ 2 * 3'],
+		['1+2*3', '1 + 2 * 3'],
+		['(1+2)*3', '1 + 2 * 3']
+	].forEach(function(a) {
+		var src = a[0],
+			expected = a[1],
+			actual = [],
+			product = actions.parse(src);
+		t.errify(product)
 
-		var rules = core.tokenize(grammar, core.Entries, core.Rules);
-
-		t.errify(rules);
-		actions = new core.Actions(rules);
-
-		[
-			['2*3', '2*3'],
-			['1+2*3', '1+2*3'],
-			['(1+2)*3', '1+2*3']
-		].forEach(function(a) {
-			var src = a[0],
-				expected = a[1],
-				actual = '',
-				product = actions.parse(src);
-			t.errify(product)
-
-			product.forEach(function(p) {
-				if (!p) return;
-				if (p.raw) actual += p.raw
-				p.action = Object.assign(Object.create(null), p.action)
-			})
-			t.equal(actual, expected, 'calculator', product)
-
-			//if (src == '(1+2)*3') dump(product);
+		product.forEach(function(p) {
+			if (!p) return;
+			if (p.raw) actual.push(p.raw)
+			p.action = Object.assign(Object.create(null), p.action)
 		})
+		t.equal(actual.join(' '), expected, 'calculator', product)
+
+		// if (src == '(1+2)*3')
+		//	dump(product);
 	})
 })

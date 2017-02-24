@@ -2,28 +2,28 @@
 
 ; fork RFC 7405
 
-ast            =  1*( rule-Rule-patch-defs-name / (*cwsp cnl) )
+ast            =  1*( rule-Rule-fetch-name-defs / (*cwsp cnl) )
 
 name           =  ALPHA *(ALPHA / DIGIT)
 
-rule           =  name--name definedAs elements cnl
+rule           =  name--to-name definedAs elements cnl
 
-defInc         =  "=" / "=/"
+defInc         =  "=/"
 
-definedAs      =  *cwsp defInc--flag *cwsp
+definedAs      =  *cwsp ("=" / defInc--alter-flag-list) *cwsp
 
-elements       =  alternation-Choice-push-alts *cwsp
+elements       =  alternation-Choice-to-alts-list *cwsp
 
 cwsp           =  WSP / (cnl WSP)
 
-cnl            =  [comment-Comment-push-comments] CRLF
+cnl            =  [comment-Comment-to-comments-list] CRLF
 
-comment        =  commentLit--raw
+comment        =  commentLit--term
 
 commentLit     =  ";" *(WSP / VCHAR)
 
-alternation    =  concatenation-Serial-push-alts
-               *(*cwsp "/" *cwsp concatenation-Serial-push-alts)
+alternation    =  concatenation-Serial-mix-seqs-list
+               *(*cwsp "/" *cwsp concatenation-Serial-mix-seqs-list)
 
 concatenation  =  repetition *(1*cwsp repetition)
 
@@ -39,15 +39,15 @@ group          =  "(" *cwsp alternation-Choice *cwsp ")"
 
 option         =  "[" *cwsp alternation-Choice *cwsp "]"
 
-ref            =  name--ref ["-" action-Action-action]
+ref            =  name--ref ["-" action-Action-to-action]
 
-action         =  name--produce [
-                  "-" [name--method] [
-                  "-" [name--property] [
-                  "-" [extra--extra]
+action         =  name--to-produce [
+                  "-" [name--to-method] [
+                  "-" [name--to-key] [
+                  "-" [flag--to-flag]
                   ]]]
 
-extra          =  ALPHA *(ALPHA / DIGIT / "-")
+flag           =  ALPHA *(ALPHA / DIGIT / "-")
 
 b              = "b"
 
@@ -56,13 +56,13 @@ d              = "d"
 x              = "x"
 
 
-binary         = "%" (  b--formal bin /
-                        d--formal dec /
-                        x--formal hex )
+binary         = "%" (  b--to-formal bin /
+                        d--to-formal dec /
+                        x--to-formal hex )
 
-range          = "%" (  b--formal binRange /
-                        d--formal decRange /
-                        x--formal hexRange )
+range          = "%" (  b--to-formal binRange /
+                        d--to-formal decRange /
+                        x--to-formal hexRange )
 
 binLit         =  1*BIT
 
@@ -70,17 +70,17 @@ decLit         =  1*DIGIT
 
 hexLit         =  1*HEXDIG
 
-bin            =  binLit--push-seqs [ 1*("." binLit--push-seqs) ]
+bin            =  binLit--to-seqs-list [ 1*("." binLit--to-seqs-list) ]
 
-dec            =  decLit--push-seqs [ 1*("." decLit--push-seqs) ]
+dec            =  decLit--to-seqs-list [ 1*("." decLit--to-seqs-list) ]
 
-hex            =  hexLit--push-seqs [ 1*("." hexLit--push-seqs) ]
+hex            =  hexLit--to-seqs-list [ 1*("." hexLit--to-seqs-list) ]
 
-binRange       =  binLit--first [ ("-" binLit--last) ]
+binRange       =  binLit--to-first [ ("-" binLit--to-last) ]
 
-decRange       =  decLit--first [ ("-" decLit--last) ]
+decRange       =  decLit--to-first [ ("-" decLit--to-last) ]
 
-hexRange       =  hexLit--first [ ("-" hexLit--last) ]
+hexRange       =  hexLit--to-first [ ("-" hexLit--to-last) ]
 
 proseLit       =  "<" prose--raw  ">"
 
@@ -90,15 +90,15 @@ prose          = *(%x20-3D / %x3F-7E)
 
 charLit         =  insensitiveLit / sensitiveLit
 
-insensitiveLit  = "%" insensitive--formal quotedLit
+insensitiveLit  = "%" insensitive--to-formal quotedLit
 
 insensitive     = "i"
 
-sensitiveLit    = [ "%" sensitive--formal ] quotedLit
+sensitiveLit    = [ "%" sensitive--to-formal ] quotedLit
 
 sensitive       = "s"
 
-quotedLit       =  DQUOTE string--raw  DQUOTE
+quotedLit       =  DQUOTE string--to-raw  DQUOTE
 
 string          = *(%x20-21 / %x23-7E)
 
