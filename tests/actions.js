@@ -1,9 +1,17 @@
+"use strict"
 var test = require('./test'),
 	core = require('../lib/core');
 
 var grammarThousands = [
 		'Array     = 1*(thousands-Number-to--list [SP])',
 		'thousands = 1*3DIGIT--term *("," 3DIGIT--term)',
+		'DIGIT     = %x30-39',
+		'SP        = %x20'
+	].join('\n'),
+	grammarThousandsSign = [
+		'Array     = 1*(*sign--mix-sign thousands-Number-to--list [SP])',
+		'thousands = 1*3DIGIT--term *("," 3DIGIT--term)',
+		'sign      = "+" / "-"',
 		'DIGIT     = %x30-39',
 		'SP        = %x20'
 	].join('\n'),
@@ -17,11 +25,12 @@ var grammarThousands = [
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarCalculator = [
-		'Expr   = factor--to-left *(op--term-operator-PREC factor--to-right)',
-		'factor = *sign--mix-sign ( Num-Number-term / "(" Expr-Expr ")" )',
-		'op     = "+" / "-" / "*" / "/"',
-		'sign   = "+" / "-"',
-		'Num    = 1*(%x30-39)',
+		'Expr      = factor--to-left *(op--term-operator-PREC factor--to-right)',
+		'factor    = *sign--mix-sign ( thousands-Number / "(" Expr-Expr ")" )',
+		'sign      = "+" / "-"',
+		'thousands = 1*3DIGIT--term *("," 3DIGIT--term)',
+		'DIGIT     = %x30-39',
+		'op        = "+" / "-" / "*" / "/"',
 		'PRECEDENCES = "%binary" "+" "-" / "%binary" "*" "/"'
 	].join('\n');
 
@@ -30,6 +39,10 @@ test('actions property', function(t, dump) {
 		[
 			grammarThousands,
 			'0,234 678', '0234 678', 'thousands'
+		],
+		[
+			grammarThousandsSign,
+			'--0,234 678', '-- 0234 678', 'thousands sign'
 		],
 		[
 			grammarActions,
@@ -46,14 +59,12 @@ test('actions property', function(t, dump) {
 
 		t.errify(product, message)
 		product.forEach(function(p) {
-			if (!p) return;
-			if (p.raw) actual.push(p.raw)
-			p.action = Object.assign(Object.create(null), p.action)
+			if (p && p.raw) actual.push(p.raw)
 		})
 		t.equal(actual.join(' '), expected, message, product)
 
-		// if (message == 'actions')
-		//	dump(product);
+		// if (message == 'thousands')
+		// 	dump(product);
 	});
 });
 
@@ -65,25 +76,25 @@ test('actions calculator', function(t, dump) {
 	actions = new core.Actions(rules);
 
 	[
-		['-2*3', '- 2 * 3'],
-		['-+2*3', '-+ 2 * 3'],
-		['1+2*3', '1 + 2 * 3'],
-		['(1+2)*3', '1 + 2 * 3']
+		['1+2*34', '1 + 2 * 34'],
+		['-2*34', '- 2 * 34'],
+		['-+2*34', '-+ 2 * 34'],
+		['(1+2)*34', '1 + 2 * 34'],
 	].forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
 			actual = [],
 			product = actions.parse(src);
+
 		t.errify(product)
 
 		product.forEach(function(p) {
-			if (!p) return;
-			if (p.raw) actual.push(p.raw)
-			p.action = Object.assign(Object.create(null), p.action)
+			if (p && p.raw) actual.push(p.raw)
 		})
+
 		t.equal(actual.join(' '), expected, 'calculator', product)
 
-		// if (src == '(1+2)*3')
-		//	dump(product);
+		// if (src == '(1+2)*34')
+		// 	dump(product);
 	})
 })

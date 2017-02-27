@@ -39,27 +39,99 @@ ABNFA 定义的 action 是语义性描述, key 和 flag 在不同的 method 下�
     2. list  目标属性是数组, 向目标添加元素.
     3. true  设置目标属性值为 true.
     4. false 设置目标属性值为 false.
-    5. PREC  启用运算符优先级, 约定优先级规则名为 PRECEDENCES.
+    5. PREC  用于运算符优先级, 以首个字符串表示结合性的替代语法由低到高描述.
+        1. "%binary" 二元运算, 后续为运算符.
+        2. "%left"   一元运算左结合, 后续为运算符.
+        3. "%right"  一元运算右结合, 后续为运算符.
 
-其中 PRECEDENCES 采用 ABNF 替代语法, 优先级由低到高, 全部由字符串组成, 第一个字符串描述结合性, 后续为运算符, 结合性定义:
+其中 produce 和 method 有多种组合顺序, 约定:
 
-  1. "%left"   向左结合一元运算符
-  2. "%right"  向右结合一元运算符
-  3. "%binary" 二元运算符
+1. mix 生成的动作被保留, 由后续工具链处理.
+2. 前后两个 action 有一个 produce, 一个 method 的向前合并.
+3. 前后两个 action 都有 produce 的都被保留.
 
-以支持符号位和千位分隔符的四则运算 `-1,234+5*(6-7*8)` 为例, ABNFA 语法为:
+# Example
+
+本节展示逐步完成支持符号位和千位分隔符的四则运算 ABNFA 语法.
+
+支持以空格分隔的多个千位分隔符数值的 ABNFA 定义:
 
 ```abnf
-Expr   = factor--to-left *(op--to-operator-PREC factor--to-right)
-factor = *sign--mix-sign ( Num-Number / "(" Expr-Expr ")" )
-op     = "+" / "-" / "*" / "/"
-sign   = "+" / "-"
-Num    = 1*3DIGIT--term *("," 3DIGIT--term)
-DIGIT  = %x30-39
+Array     = 1*(thousands-Number-to--list [SP])
+thousands = 1*3DIGIT--term *("," 3DIGIT--term)
+DIGIT     = %x30-39
+SP        = %x20
+```
+
+匹配样例 `0,234 678` 得到动作数组:
+
+```yaml
+- action:
+    produce: Number
+    method: to
+    flag: list
+  start: 0
+  end: 5
+  raw: '0234'
+- action:
+    produce: Number
+    method: to
+    flag: list
+  start: 6
+  end: 9
+  raw: '678'
+```
+
+增加符号位支持:
+
+```abnf
+Array     = 1*(*sign--mix-sign thousands-Number-to--list [SP])
+sign      = "+" / "-"
+thousands = 1*3DIGIT--term *("," 3DIGIT--term)
+DIGIT     = %x30-39
+SP        = %x20
+```
+
+匹配样例 `--0,234 678` 得到动作数组:
+
+```yaml
+- action:
+    method: mix
+    key: sign
+  start: 0
+  end: 2
+  raw: '--'
+- action:
+    produce: Number
+    method: to
+    flag: list
+  start: 2
+  end: 7
+  raw: '0234'
+- action:
+    produce: Number
+    method: to
+    flag: list
+  start: 8
+  end: 11
+  raw: '678'
+```
+
+支持符号位和千位分隔符的四则运算的 ABNFA 定义:
+
+```abnf
+Expr      = factor--to-left *(op--to-operator-PREC factor--to-right)
+factor    = *sign--mix-sign ( thousands-Number / "(" Expr-Expr ")" )
+sign      = "+" / "-"
+thousands = 1*3DIGIT--term *("," 3DIGIT--term)
+DIGIT     = %x30-39
+op        = "+" / "-" / "*" / "/"
 
 PRECEDENCES = "%binary" "+" "-" /
               "%binary" "*" "/"
 ```
+
+匹配样例 `-1,234+5*(6-7*8)` 得到动作数组:
 
 # Actions
 
