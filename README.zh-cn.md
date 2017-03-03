@@ -26,15 +26,15 @@ action:
 
 ABNFA 定义的 action 是语义性描述, key 和 flag 在不同的 method 下会改变角色.
 
-1. produce   自定义类型名称, 用于确定生成对象或拼接字符串.
-2. method    处理方法
+1. produce   自定义类型名称, 用于生成对象或拼接字符串.
+2. method    动作方法名
     1. to    已有 produce 为目标, 对 target[key] 赋值.
     2. term  终结符必用, 为生成目标拼接匹配的字符串.
     3. mix   新的 produce 为目标.
-    4. fetch 已有 produce 为目标, 赋值 produce[key] 到 target[flag].
-    5. alter 以 key, flag 为参数改变 action.
-3. key       关键名称
-4. flag      处理标记, 缺省为字符串拼接.
+    4. alter 可与 produce 组合, 以 key, flag 为参数向前改变 to 方法的参数.
+    5. fetch 已有 produce 为目标, 赋值 produce[key] 到 target[flag].
+3. key       动作参数, 属性名称.
+4. flag      动作参数, 行为标记, 缺省为字符串拼接.
     1. back  目标回退.
     2. list  目标属性是数组, 向目标添加元素.
     3. true  设置目标属性值为 true.
@@ -44,15 +44,23 @@ ABNFA 定义的 action 是语义性描述, key 和 flag 在不同的 method 下�
         2. "%left"   一元运算左结合, 后续为运算符.
         3. "%right"  一元运算右结合, 后续为运算符.
 
-其中 produce 和 method 有多种组合顺序, 约定:
+显然一个动作至少要包含 produce 或 method 之一.
+关键在于 produce 和 method 的组合顺序, 约定动作行为优先级(算法概要):
 
-1. mix 生成的动作被保留, 由后续工具链处理.
-2. 前后两个 action 有一个 produce, 一个 method 的向前合并.
-3. 前后两个 action 都有 produce 的都被保留.
+1. 含 produce 或 method 的动作被保留或合并, 并作为查找边界 B (boundary).
+2. 含 mix 的动作向后查找边界, [mix, B) 间的动作被保留.
+3. 含 alter 的动作向前查找边界 B, 并做相应的替换.
+4. 含 method 且不含 produce 的动作向前查找不含 method 的边界 B 进行动作合并.
+5. 含 produce 且不含 method 的动作向前查找不含 produce 的边界 B 进行动作合并.
+6. 匹配成功后, 调整 [mix, B) 间动作到 B 之后, mix 被替换为 to.
+
+使用 action 进行语法定义的复杂度和语法本身的复杂度成正比.
+
+    越复杂的语法越需要使用者细心定义才能正确工作
 
 # Example
 
-本节展示逐步完成支持符号位和千位分隔符的四则运算 ABNFA 语法.
+本节逐步展示实现支持符号位和千位分隔符的四则运算 ABNFA 语法.
 
 支持以空格分隔的多个千位分隔符数值的 ABNFA 定义:
 
@@ -82,7 +90,7 @@ SP        = %x20
   raw: '678'
 ```
 
-增加符号位支持:
+增加前置符号位支持:
 
 ```abnf
 Array     = 1*(*sign--mix-sign thousands-Number-to--list [SP])
@@ -132,6 +140,87 @@ PRECEDENCES = "%binary" "+" "-" /
 ```
 
 匹配样例 `-1,234+5*(6-7*8)` 得到动作数组:
+
+```abnf
+- action:
+    method: to
+    key: left
+  start: 0
+  end: 6
+- action:
+    method: mix
+    key: sign
+  start: 0
+  end: 1
+  raw: '-'
+- action:
+    produce: Number
+  start: 1
+  end: 6
+  raw: '1234'
+- action:
+    method: term
+    key: operator
+    flag: PREC
+  start: 6
+  end: 7
+  raw: +
+- action:
+    produce: Number
+    method: to
+    key: right
+  start: 7
+  end: 8
+  raw: '5'
+- action:
+    method: term
+    key: operator
+    flag: PREC
+  start: 8
+  end: 9
+  raw: '*'
+- action:
+    produce: Expr
+    method: to
+    key: right
+  start: 9
+  end: 16
+- action:
+    produce: Number
+    method: to
+    key: left
+  start: 10
+  end: 11
+  raw: '6'
+- action:
+    method: term
+    key: operator
+    flag: PREC
+  start: 11
+  end: 12
+  raw: '-'
+- action:
+    produce: Number
+    method: to
+    key: right
+  start: 12
+  end: 13
+  raw: '7'
+- action:
+    method: term
+    key: operator
+    flag: PREC
+  start: 13
+  end: 14
+  raw: '*'
+- action:
+    produce: Number
+    method: to
+    key: right
+  start: 14
+  end: 15
+  raw: '8'
+```
 
 # Actions
 

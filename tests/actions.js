@@ -25,12 +25,13 @@ var grammarThousands = [
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarCalculator = [
-		'Expr      = factor--to-left *(op--term-operator-PREC factor--to-right)',
+		'Expr      = factor--to-left *(op--to-operator factor--to-right)',
 		'factor    = *sign--mix-sign ( thousands-Number / "(" Expr-Expr ")" )',
 		'sign      = "+" / "-"',
 		'thousands = 1*3DIGIT--term *("," 3DIGIT--term)',
 		'DIGIT     = %x30-39',
-		'op        = "+" / "-" / "*" / "/"',
+		'op        = "+" / "-" / mulOp-Expr-alter-key-left',
+		'mulOp     = "*" / "/"',
 		'PRECEDENCES = "%binary" "+" "-" / "%binary" "*" "/"'
 	].join('\n');
 
@@ -77,9 +78,11 @@ test('actions calculator', function(t, dump) {
 
 	[
 		['1+2*34', '1 + 2 * 34'],
+		['1+2*3*4', '1 + 2 * 3 * 4'],
 		['-2*34', '- 2 * 34'],
 		['-+2*34', '-+ 2 * 34'],
 		['(1+2)*34', '1 + 2 * 34'],
+		['-1,234+5*(6-7*8)', '- 1234 + 5 * 6 - 7 * 8'],
 	].forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
@@ -94,7 +97,7 @@ test('actions calculator', function(t, dump) {
 
 		t.equal(actual.join(' '), expected, 'calculator', product)
 
-		// if (src == '(1+2)*34')
-		// 	dump(product);
+		 if (src == '1+2*3*4')
+		 	dump(product);
 	})
 })
