@@ -77,8 +77,8 @@ test('actions calculator', function(t, dump) {
 	actions = new core.Actions(rules);
 
 	[
-		['1+2*34', '1 + 2 * 34'],
 		['1+2*3*4', '1 + 2 * 3 * 4'],
+		['1+-2*3-4', '1 + - 2 * 3 - 4'],
 		['-2*34', '- 2 * 34'],
 		['-+2*34', '-+ 2 * 34'],
 		['(1+2)*34', '1 + 2 * 34'],
@@ -97,7 +97,7 @@ test('actions calculator', function(t, dump) {
 
 		t.equal(actual.join(' '), expected, 'calculator', product)
 
-		 if (src == '1+2*3*4')
+		 if (src == '1+-2*3-4')
 		 	dump(product);
 	})
 })
