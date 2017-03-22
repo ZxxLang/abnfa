@@ -42,10 +42,9 @@ var grammarThousands = [
 		'group        = "(" Expression ")"',
 		'UnaryExpr    = minus--lit-operator-prefix Expression--inner-operand',
 		'BinaryExpr   = operator--lit-operator-infix Expression--inner-right',
-		'NumericExpr  = 1*3DIGIT--lit',
+		'NumericExpr  = 1*3DIGIT--lit *("," 3DIGIT--lit)',
 		'minus        = "-"',
 		'operator     = ("+" / "-") / ("*" / "/")',
-		'thousands    = 1*3DIGIT--lit *("," 3DIGIT--lit)',
 		'DIGIT        = %x30-39',
 	].join('\n'),
 	grammarArithmeticOperand = [
@@ -55,26 +54,22 @@ var grammarThousands = [
 		'              *BinaryExpr-forward-operand-list-',
 		'UnaryExpr   = Expression--to-operand',
 		'BinaryExpr  = operator--lit-operator-infix Expression--to-operand',
-		'NumericExpr = thousands',
+		'NumericExpr = 1*3DIGIT--lit *("," 3DIGIT--lit)',
 		'minus       = "-"',
 		'operator    = ("+" / "-") / ("*" / "/")',
-		'thousands   = 1*3DIGIT--lit *("," 3DIGIT--lit)',
 		'DIGIT       = %x30-39',
 	].join('\n'),
 	arithmetics = [
-		//['-1', '- 1'],
-		//['1-2*3', '1 - 2 * 3'],
-		//['1*2-3', '1 * 2 - 3'],
-		//['-1-2*-3', '1 - 2 * - 3'],ß
+		['-1', '[-1]'],
+		['1-2*3', '[1-[2*3]]'],
+		['1*2-3', '[[1*2]-3]'],
+		['-1-2*-3', '[[-1]-[2*[-3]]]'],
 		['-1*((2--3)*4)', '[[-1]*[[2-[-3]]*4]]'],
 		['(((-1*((((2--3)))*4))))', '[[-1]*[[2-[-3]]*4]]'],
-		//['-(1+2)*3', '- 1 + 2 * 3'],
-		//['-1+-2--3+-4', '- 1 + - 2 - - 3 + - 4'],
-		//['1+2*3*4', '1 + 2 * 3 * 4'],
-		//['1+-2*3-4', '1 + - 2 * 3 - 4'],
-		//['-2*34', '- 2 * 34'],
-		//['(1+2)*34', '1 + 2 * 34'],
-		//['-1,234+-5*-(6-7*8)/9', '- 1234 + - 5 * - 6 - 7 * 8 / 9'],
+		['-1+-2--3+-4', '[[[[-1]+[-2]]-[-3]]+[-4]]'],
+		['1*2/3*4', '[[[1*2]/3]*4]'],
+		['1+2/3*4', '[1+[[2/3]*4]]'],
+		['-1,234+5', '[[-1234]+5]'],
 	];
 
 test('actions property', function(t, dump) {
@@ -129,10 +124,11 @@ test('actions arithmetic', function(t, dump) {
 
 		t.errify(product, src)
 
+
 		product.forEach(group, actual)
 
 		t.equal(actual.join(''), expected, 'arithmetic', [src, product, actual])
-		dump([src, product])
+		//dump([src, product])
 	})
 })
 
