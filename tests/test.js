@@ -12,8 +12,10 @@ tap.Test.prototype.addAssert('errify', 1, function(er, message, extra) {
 module.exports = function test(what, fn) {
 	tap.test(what, function(t) {
 		var msg = 'dump'
-		fn(t, function(o) {msg += '\n' + yaml.dump(o)+'...................................................\n'})
-		if (msg!='dump') t.push(msg)
+		fn(t, function(o) {
+			msg += '\n' + yaml.dump(o) + '...................................................\n'
+		})
+		if (msg != 'dump') t.push(msg)
 		t.ok(true, 'ok')
 		t.end()
 	})

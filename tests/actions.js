@@ -3,23 +3,23 @@ var test = require('./test'),
 	core = require('../lib/core');
 
 var grammarThousands = [
-		'Array     = 1*(num-Number-to--list [SP])',
-		'num       = 1*3digit *("," 3digit)',
+		'Array     = 1*(Number-to--list- [SP])',
+		'Number    = 1*3digit *("," 3digit)',
 		'digit     = DIGIT--lit',
 		'DIGIT     = %x30-39',
 		'SP        = %x20'
 	].join('\n'),
 	grammarThousandsSign = [
-		'Array     = 1*(num-Number-to--list [SP])',
-		'num       = [sign--lit] 1*3digit *("," 3digit)',
+		'Array     = 1*(Number-to--list- [SP])',
+		'Number    = [sign--lit] 1*3digit *("," 3digit)',
 		'sign      = "+" / "-"',
 		'digit     = DIGIT--lit',
 		'DIGIT     = %x30-39',
 		'SP        = %x20'
 	].join('\n'),
 	grammarThousandsOperator = [
-		'Array     = 1*(num-Number-to--list [SP])',
-		'num       = *sign--lit-sign 1*3digit *("," 3digit)',
+		'Array     = 1*(Number-to--list- [SP])',
+		'Number    = *sign--lit-sign 1*3digit *("," 3digit)',
 		'sign      = "+" / "-"',
 		'digit     = DIGIT--lit-lit',
 		'DIGIT     = %x30-39',
@@ -35,25 +35,27 @@ var grammarThousands = [
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarArithmetic = [
-		'ArithmeticExpr  = ( group--group /',
-		'                  UnaryExpr-UnaryExpr /',
-		'                  NumericExpr-NumericExpr )',
-		'                  [BinaryExpr-BinaryExpr-ahead-left]',
-		'group           = "(" ArithmeticExpr ")"',
-		'UnaryExpr       = minus--lit-operator-right ArithmeticExpr--behind-operand',
-		'BinaryExpr      = operator--lit-operator-binary ArithmeticExpr--behind-right',
-		'NumericExpr     = thousands',
-		'minus           = "-"',
-		'operator        = "+" / "-" / "*" / "/"',
-		'thousands       = 1*3DIGIT--lit *("," 3DIGIT--lit)',
-		'DIGIT           = %x30-39',
+		'Expression   = ( group--alone /',
+		'               UnaryExpr- /',
+		'               NumericExpr- )',
+		'               [BinaryExpr-ahead-left-]',
+		'group        = "(" Expression ")"',
+		'UnaryExpr    = minus--lit-operator-prefix Expression--inner-operand',
+		'BinaryExpr   = operator--lit-operator-infix Expression--inner-right',
+		'NumericExpr  = 1*3DIGIT--lit',
+		'minus        = "-"',
+		'operator     = ("+" / "-") / ("*" / "/")',
+		'thousands    = 1*3DIGIT--lit *("," 3DIGIT--lit)',
+		'DIGIT        = %x30-39',
 	].join('\n'),
 	grammarArithmeticOperand = [
-		'ArithmeticExpr  = [minus--lit-operator] ("(" ArithmeticExpr-ArithmeticExpr-to-operand-list ")" / NumericExpr-NumericExpr-to-operand-list)',
-		'                  *BinaryExpr-BinaryExpr-forward-operand-list',
-		'UnaryExpr       = ArithmeticExpr--to-operand',
-		'BinaryExpr      = operator--lit-operator-binary ArithmeticExpr-ArithmeticExpr-to-operand',
-		'NumericExpr     = thousands',
+		'Expression  = [minus--lit-operator] (',
+		'                "(" Expression--to-operand-list ")" /',
+		'                NumericExpr-to-operand-list-)',
+		'              *BinaryExpr-forward-operand-list-',
+		'UnaryExpr   = Expression--to-operand',
+		'BinaryExpr  = operator--lit-operator-infix Expression--to-operand',
+		'NumericExpr = thousands',
 		'minus       = "-"',
 		'operator    = ("+" / "-") / ("*" / "/")',
 		'thousands   = 1*3DIGIT--lit *("," 3DIGIT--lit)',
@@ -63,8 +65,9 @@ var grammarThousands = [
 		//['-1', '- 1'],
 		//['1-2*3', '1 - 2 * 3'],
 		//['1*2-3', '1 * 2 - 3'],
-		//['-1-2*-3', '1 - 2 * - 3'],
-		['-1*2--3', '- 1 * 2 - - 3'],
+		//['-1-2*-3', '1 - 2 * - 3'],ß
+		['-1*((2--3)*4)', '[[-1]*[[2-[-3]]*4]]'],
+		['(((-1*((((2--3)))*4))))', '[[-1]*[[2-[-3]]*4]]'],
 		//['-(1+2)*3', '- 1 + 2 * 3'],
 		//['-1+-2--3+-4', '- 1 + - 2 - - 3 + - 4'],
 		//['1+2*3*4', '1 + 2 * 3 * 4'],
@@ -103,9 +106,9 @@ test('actions property', function(t, dump) {
 
 		t.errify(product, message)
 		t.equal(a[4], product.length, message, [src, product, actual])
-		product.forEach(function(p) {
-			if (p && p.raw) actual.push(p.raw)
-		})
+
+		product.forEach(group, actual)
+
 		t.equal(actual.join(' '), expected, message, [src, product, actual]);
 		//dump([src, product])
 	});
@@ -124,18 +127,25 @@ test('actions arithmetic', function(t, dump) {
 			actual = [],
 			product = actions.parse(src);
 
-		t.errify(product, src, actions.list)
+		t.errify(product, src)
 
-		product.forEach(function(p) {
-			if (p.raw) actual.push(p.raw)
-		})
+		product.forEach(group, actual)
 
-		t.equal(actual.join(' '), expected, 'arithmetic', [src, product, actual])
+		t.equal(actual.join(''), expected, 'arithmetic', [src, product, actual])
 		dump([src, product])
 	})
 })
 
-test('actions arithmetic operand', function(t, dump) {
+function group(p) {
+	if (p.raw) this.push(p.raw)
+	if (p.factors) {
+		this.push('[')
+		p.factors.forEach(group, this)
+		this.push(']')
+	}
+}
+
+0 && test('actions arithmetic operand', function(t, dump) {
 	var actions,
 		rules = core.tokenize(grammarArithmeticOperand, core.Entries, core.Rules);
 
@@ -150,9 +160,7 @@ test('actions arithmetic operand', function(t, dump) {
 
 		t.errify(product, src, actions.list)
 
-		product.forEach(function(p) {
-			if (p && p.raw) actual.push(p.raw)
-		})
+		product.forEach(group, actual)
 
 		t.equal(actual.join(' '), expected, 'arithmetic operand', [src, product, actual]);
 		//dump([src, product])
