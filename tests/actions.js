@@ -133,6 +133,7 @@ test('actions dot expression', function(t, dump) {
 		['i', 'i'],
 		['i.j', '[ij]'],
 		['i.j.k', '[[ij]k]'],
+		['i.j.k.l', '[[[ij]k]l]'],
 	].forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
