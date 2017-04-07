@@ -32,9 +32,9 @@ var grammarThousands = [
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarArithmetic = [
-		'Expression   = ( group-alone /',
+		'Expression   = ( NumericExpr- /',
 		'               UnaryExpr-prefix- /',
-		'               NumericExpr- )',
+		'               group-alone )',
 		'               [BinaryExpr-infix-left-]',
 		'group        = "(" Expression ")"',
 		'UnaryExpr    = minus-lit-operator Expression-inner-operand',
@@ -49,13 +49,20 @@ var grammarThousands = [
 		['1-2*3', '[1-[2*3]]'],
 		['1*2-3', '[[1*2]-3]'],
 		['-1-2*-3', '[[-1]-[2*[-3]]]'],
+		['-(1--2)*-3', '[[-[1-[-2]]]*[-3]]'],
 		['-1*((2--3)*4)', '[[-1]*[[2-[-3]]*4]]'],
 		['(((-1*((((2--3)))*4))))', '[[-1]*[[2-[-3]]*4]]'],
 		['-1+-2--3+-4', '[[[[-1]+[-2]]-[-3]]+[-4]]'],
 		['1*2/3*4', '[[[1*2]/3]*4]'],
 		['1+2/3*4', '[1+[[2/3]*4]]'],
 		['-1,234+5', '[[-1234]+5]'],
-	];
+	],
+	grammarExpr = [
+		'Expr       = Ident- *DotExpr-ahead-object-',
+		'DotExpr    = "." Ident-to-property-',
+		'Ident      = 1*ALPHA',
+		'ALPHA      = %x41-5A / %x61-7A',
+	].join('\n');
 
 test('actions property', function(t, dump) {
 	[
@@ -73,7 +80,7 @@ test('actions property', function(t, dump) {
 		],
 		[
 			grammarThousandsOperator,
-			'+-0,234 678', '[ +- 0234 ] 678', 'thousands operator',
+			'+-0,234 678', '[ +- 0234 ] [ 678 ]', 'thousands operator',
 		],
 	].forEach(function(a, i) {
 		var abnf = a[0],
@@ -87,8 +94,8 @@ test('actions property', function(t, dump) {
 		t.errify(product, message)
 
 		product.forEach(group, actual)
-
-		t.equal(actual.join(' '), expected, message, [src, product, actual]);
+		actual = actual.join(' ')
+		t.equal(actual, expected, message, [src, product, actual]);
 		//dump([message, src, product])
 	});
 });
@@ -109,11 +116,37 @@ test('actions arithmetic', function(t, dump) {
 		t.errify(product, src)
 
 		product.forEach(group, actual)
-
-		t.equal(actual.join(''), expected, 'arithmetic', [src, product, actual]);
+		actual = actual.join('')
+		t.equal(actual, expected, 'arithmetic', [src, product, actual, expected]);
 		//dump([src, product])
 	})
 })
+
+test('actions dot expression', function(t, dump) {
+	var actions,
+		rules = core.tokenize(grammarExpr, core.Entries, core.Rules);
+
+	t.errify(rules);
+	actions = new core.Actions(rules);
+
+	[
+		['i', 'i'],
+		['i.j', '[ij]'],
+		['i.j.k', '[[ij]k]'],
+	].forEach(function(a) {
+		var src = a[0],
+			expected = a[1],
+			actual = [],
+			product = actions.parse(src);
+
+		t.errify(product, src)
+
+		product.forEach(group, actual)
+		actual = actual.join('')
+		t.equal(actual, expected, 'dot', [src, product, actual, expected]);
+		dump([src, product])
+	})
+});
 
 function group(p) {
 	// if (p.method && 'inner ahead'.indexOf(p.method) != -1)
