@@ -57,12 +57,56 @@ var grammarThousands = [
 		['1+2/3*4', '[1+[[2/3]*4]]'],
 		['-1,234+5', '[[-1234]+5]'],
 	],
-	grammarExpr = [
-		'Expr       = Ident- *DotExpr-ahead-object-',
-		'DotExpr    = "." Ident-to-property-',
-		'Ident      = 1*ALPHA',
-		'ALPHA      = %x41-5A / %x61-7A',
-	].join('\n');
+	grammarExpression = [
+		'Expression   = ( NumericExpr- /',
+		'               UnaryExpr-prefix- /',
+		'               group-alone /',
+		'               computed )',
+		'               [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]',
+
+		'computed     = Ident- *(DotExpr-ahead-object- / IndexExpr-ahead-object- / CallExpr-ahead-callee-)',
+		'DotExpr      = "." Ident-to-property-',
+		'IndexExpr    = "[" Expression-alone-property "]"',
+		'CallExpr     = "(" [arguments] ")"',
+
+		'arguments    = Expression-alone-arguments--push *("," Expression-alone-arguments--push)',
+
+		'group        = "(" Expression ")"',
+		'UpdateExpr   = suffix-lit-operator',
+		'UnaryExpr    = prefix-lit-operator Expression-inner-operand',
+		'BinaryExpr   = ( infix-precedence-operator /',
+		'               SP infixSymbol-precedence-operator SP)',
+		'               Expression-inner-right',
+		'NumericExpr  = 1*DIGIT-lit',
+
+		'prefix       = "--" / "++" / "-"',
+		'suffix       = "--" / "++"',
+		'infix        = ("") / ("") / ("+" / "-") / ("*" / "/")',
+		'infixSymbol  = ("or") / ("and")',
+
+		'Ident        = 1*ALPHA-lit',
+		'SP           = %x20',
+		'ALPHA        = %x41-5A / %x61-7A',
+		'DIGIT        = %x30-39',
+	].join('\n'),
+	expressions = [
+		['i', 'i'],
+		['i.j', '[ij]'],
+		['i.j.k', '[[ij]k]'],
+		['i.j.k.l', '[[[ij]k]l]'],
+		['i[j]', '[ij]'],
+		['i()', '[i]'],
+		['i.j()', '[[ij]]'],
+		['i.j(1)', '[[ij]1]'],
+		['i(j+2)', '[i[j+2]]'],
+		['i(j+2,k)', '[i[j+2]k]'],
+		['i.i(j+2,k)', '[[ii][j+2]k]'],
+		['i++', '[i++]'],
+		['++i', '[++i]'],
+		['++i++', '[++[i++]]'],
+		['i.j()+k*l', '[[[ij]]+[k*l]]'],
+		['i and k or l', '[[iandk]orl]'],
+	];
 
 test('actions property', function(t, dump) {
 	[
@@ -122,19 +166,14 @@ test('actions arithmetic', function(t, dump) {
 	})
 })
 
-test('actions dot expression', function(t, dump) {
+test('actions expression', function(t, dump) {
 	var actions,
-		rules = core.tokenize(grammarExpr, core.Entries, core.Rules);
+		rules = core.tokenize(grammarExpression, core.Entries, core.Rules);
 
 	t.errify(rules);
 	actions = new core.Actions(rules);
 
-	[
-		['i', 'i'],
-		['i.j', '[ij]'],
-		['i.j.k', '[[ij]k]'],
-		['i.j.k.l', '[[[ij]k]l]'],
-	].forEach(function(a) {
+	expressions.forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
 			actual = [],
@@ -144,8 +183,8 @@ test('actions dot expression', function(t, dump) {
 
 		product.forEach(group, actual)
 		actual = actual.join('')
-		t.equal(actual, expected, 'dot', [src, product, actual, expected]);
-		dump([src, product])
+		t.equal(actual, expected, 'expression', [src, product, actual, expected]);
+		//dump([src, product])
 	})
 });
 

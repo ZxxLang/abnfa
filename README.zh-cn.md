@@ -238,16 +238,22 @@ Actions 依据 Rules 生成的规则和输入源生成 AAT.
 
 匹配:
 
-    该过程是自顶向下的, 生成的 Action 自底向上 push 到动作数组 factors.
-    匹配过程可能直接生成子 factors, 比如 alone 方法或者插件.
-    每个 factors 都形成一个归纳阶段.
+    该过程是自顶向下的, 按文法顺序生成 Action 数组
+    匹配过程可能直接生成子 factors, 比如 alone 方法
+    每个 factors 都形成一个构建阶段
+    插件是以 ref 的形式在此阶段被触发, 插件可以生成动作事件节点
 
-归纳:
+构建:
 
-    依据 start, end 对当前的 factors 排序
-    触发插件事件
-    并处理运算符结合性
-    依据排序后的 start, end 确定子节点, 并移动到父节点的 factions.
+    生成 ahead  方法的子 factors
+    生成 prefix 方法的子 factors
+    生成 infix  方法的子 factors
+    其它方法依据 start, end 生成子 factors
+
+事件:
+
+    before 在构建前触发事件, 无需处理子 factors
+    after  在构建后触发事件, 需要处理子 factors, 但无需递归
 
 ## plugins
 
