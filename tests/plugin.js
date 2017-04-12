@@ -21,7 +21,7 @@ var test = require('./test'),
 		'SP     = %x20',
 	].join('\n');
 
-0 && test('crlf', function(t) {
+test('crlf', function(t) {
 	var actions = core.tokenize(grammarCRLF, core.Entries, core.Rules, core.Actions);
 
 	t.errify(actions);
