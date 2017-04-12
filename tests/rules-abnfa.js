@@ -13,7 +13,7 @@ function reRaw(raw, tok) {
 	return Array.isArray(tok) && tok.reduce(reRaw, raw) || raw + tok.raw
 }
 
-test('token to raw string', function(t, dump) {
+test('token to raw string', function(t) {
 	var expected = abnfraw,
 		toks = core.tokenize(abnfraw),
 		retrans = new core.Retrans(core.Entries, core.Rules);

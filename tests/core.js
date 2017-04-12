@@ -84,7 +84,7 @@ test('tokenize c-nl', function(t) {
 	})
 });
 
-test('tokenize num range', function(t, dump) {
+test('tokenize num range', function(t) {
 	var tests = [
 		'r = %b0101-1000',
 		'r = %b0101.1000',
@@ -201,8 +201,6 @@ function rules(tests) {
 
 		t.deepEqual(actual, expected, s)
 	})
-
-	//t.ok(0, 'dump', expected)
 }
 
 test('rules', function(t) {

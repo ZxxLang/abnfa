@@ -60,7 +60,7 @@ Action:
   type: String
   method: String
   key: String
-  extra: String
+  extra: [String]
 ```
 
 该数组称作 Abstract Actions Tree: AAT. AAT 包含生成 AST 节点的信息:
@@ -70,7 +70,7 @@ Action:
     raw        匹配并被保留的原始字符串, 未定义 action 的匹配字符串被抛弃.
     factors    表示同级别分组, 与 raw 互斥. 参见 alone 方法以及运算符.
     precedence 运算符优先级, 从 1 开始, 值越大优先级越高.
-    其它源自 action 的属性, 依据节点关系 method 值会被更新.
+    其它源自 action 的属性, 其中 extra 为数组, 依据节点关系 method 值会被更新.
 
 事实上 AAT 的结构非常接近 AST, 只是未生成 type 表示的具体节点.
 
@@ -94,31 +94,36 @@ Action:
 
 ## extra
 
-额外的参数. 比如描述 node 和 parent 的关系.
+额外的参数.
+
+比如当 method 被动作关系占用时可利用 extra 来指示 AST 节点关系.
 
 ## method
 
-动作方法名, 指示动作间的关系用于生成 AAT.
+动作方法名, 约定的方法名用来指示动作间的关系用于生成 AAT,
+如果不需要指示动作关系时可自定义名称用来指示 AST 节点关系.
 
 简便起见, 下文按照自顶向下顺序对生成的动作进行如下命名:
 
     source 动作对象, 通常由 ref 生成.
     target 动作对象, 通常由上级规则生成.
-    node   节点对象, source 对应的 AST 节点.
-    parent 节点对象, target 对应的 AST 节点.
+    node   AST 节点对象, source 对应的 AST 节点.
+    parent AST 节点对象, target 对应的 AST 节点.
 
-核心工具不生成和操作 node 和 parent, 下面的描述只表示常规做法.
-
-注意: method 不是被用来指导生成 AST 的, 但并不可靠.
+下面列举约定的方法名和隐含的动作及节点关系, 当然可以通过 extra 更改节点关系.
 
 ### lit
 
-当 ref 内没有动作, source 为字符串时使用该方法.
+当需要保存 ref 匹配的字符串时使用, 不能与 extra 组合使用.
 
-    ref-lit     ---> target.raw  = source
-    ref-lit-key ---> parent[key] = node
+    ref-lit--[type]     ---> target.raw  = source
+    ref-lit-key-[type]  ---> parent[key] = node
 
-注意: 如果 ref 为运算符不能与 type 组合使用.
+行为:
+
+    未使用 lit 的动作匹配的字符串被丢弃
+    组合 type 的 lit 动作不合并
+    未组合 type 且其它项相同的 lit 动作被合并
 
 ### precedence
 
@@ -149,16 +154,17 @@ operatorAlpha   = ("or") /
 
 注意: precedence 最小值是从 1 开始的.
 
-### to
+### alone
 
-该方法必须与 type 组合使用.
+当 ref 生成独立的 source 时使用, source 的归属由上层确定.
 
-    ref-to-     ---> parent.push(node)
-    ref-to-key- ---> parent[key] = node
+    ref-alone ---> source.factors = []
+
+常用于分组表达式, 被括号包裹的, 被逗号分隔的, 表达式运算子等.
 
 ### ahead
 
-当 ref 生成 target, 先前生成的 source 动作是 target 的属性时使用.
+当 ref 生成 target, 先前生成的首个非 mark 动作为 source 时使用.
 
 该方法必须与 type 组合使用.
 
@@ -174,177 +180,158 @@ update      = "++" / "--"
 
 ### prefix
 
-当 ref 为一元前缀表达式时使用.
+当 ref 为一元前缀表达式, 后续生成的首个非 mark 动作为运算子时使用.
 
     ref-prefix-     ---> parent.push(node)
     ref-prefix-key- ---> parent[key] = node
 
 ### infix
 
-当 ref 为二元中缀表达式时使用. 必须与 type 组合使用.
+当 ref 为二元中缀表达式, 后续生成的首个非 mark 动作为运算子时使用.
 
     ref-infix-     ---> parent.push(node)
     ref-infix-key- ---> parent[key] = node
 
-### alone
-
-当 ref 生成独立的 source 时使用, source 的归属由上层确定.
-
-    ref-alone ---> source.factors = []
-
-常用于分组表达式, 被括号包裹的, 被逗号分隔的, 表达式运算子等.
-
 ### inner
 
-当 ref 生成的第一个非 mark 的 type 动作为 source 时使用.
+当需要提取 ref 首个非 mark 动作时使用. 可配合 ahead, prefix, infix.
 
     ref-inner-key ---> parent[key] = node
 
-### fetch
-
-该方法必须与 type 组合使用.
-
-    ref-fetch-key- ---> parent[node[key]] = node
-
-该动作总是被保留, 并且:
-
- - 不参与表达式中的运算数数量计算
-
 ### mark
 
-当以上方法都不合适时 mark 是最后的选择, 而不是自定义其它方法名.
+该动作总是被保留, 配合 ahead, prefix, infix 用于排除非运算子.
 
     ref-mark-[key]-[type]-[extra]
-
-该动作总是被保留, 并且:
-
- - 不参与表达式中的运算数数量计算
 
 典型的应用场景:
 
  - 注释
  - 版式相关
  - 给 AST 节点设置附加属性
+ - 插件事件, 参见 Actions.
+
+### customize
+
+除了上述和生成动作密切相关的保留方法外, 使用者可自定义方法名.
+
+下面推荐几个用来表示节点关系方法名.
+
+#### to
+
+通用赋值.
+
+    ref-to-key- ---> parent[key] = node
+
+#### fetch
+
+该方法必须与 type 组合使用.
+
+    ref-fetch-key- ---> parent[node[key]] = node
 
 # Actions
 
 Actions 依据 Rules 生成的规则和输入源生成 AAT.
 
-了解 Actions 的算法有助于正确使用 ABNFA 文法以及开发插件.
+了解下述 AAT 生成步骤有助于正确使用 ABNFA 文法以及开发插件.
 
-准备:
+初始:
 
     rules, source 和可选的 plugins 开始解析匹配
 
 匹配:
 
-    该过程是自顶向下的, 按文法顺序生成 Action 数组
+    自顶向下进行匹配, 自底向上生成动作
+    插件被执行时可创建插件事件, 但注意上级动作可能未生成.
     匹配过程可能直接生成子 factors, 比如 alone 方法
-    每个 factors 都形成一个构建阶段
-    插件是以 ref 的形式在此阶段被触发, 插件可以生成动作事件节点
+    每个 factors 都执行构建步骤.
 
 构建:
 
+    先触发插件事件, 通常无需要处理子 factors.
     生成 ahead  方法的子 factors
     生成 prefix 方法的子 factors
     生成 infix  方法的子 factors
     其它方法依据 start, end 生成子 factors
 
-事件:
-
-    before 在构建前触发事件, 无需处理子 factors
-    after  在构建后触发事件, 需要处理子 factors, 但无需递归
-
 ## plugins
 
-当插件函数 InstanceOfActions.plugins[ref] 存在时会被调用. 函数原型:
+插件函数可通过 new Actions 的第二参数或使用 addPlugins 方法传递.
 
-```js
-function plugin(n, thisArg): bool {}
-```
+加载阶段:
 
-参数:
-
-    n       对象, 含引用规则名的字符串属性 ref 和其它部分的对象属性 action.
-    thisArg 当前的 Actions 实例
-
-返回:
-
-    true  表示该阶段成功
-    false 表示该阶段失败
-
-插件有三个步骤:
-
-加载: 必须写在文法的第一条规则前部.
+必须位于第一条规则前部(事实上 ACTIONS 是内置插件).
 
     ACTIONS-PluginName-[args]-[args]-[args]
 
-如果存在命名为 `LOAD_PluginName` 的插件函数, 则优先调用它.
-
-插件函数需要返回布尔值表示是否加载成功.
-
-触发: 在阶段性匹配输入源过程中被触发, 可产生下述结构的动作事件 event:
-
-```yaml
-type: 'ACTIONS'
-method: 'mark'
-key: String
-extra: String
-```
-
-即: 触发的主要任务之一就是生成合适的动作事件
-
-事件: 由 Actions 内部机制处理动作数组时调用
+如果存在加载函数 `LOAD_PluginName` 优先执行, 否则执行 `PluginName`.
 
 ```js
-this.plugins['ON_' + event.key](list, this, index)
+function plugin(n, self): bool {}
 ```
-
-其中 event === list[index], 这是在触发步骤中生成的.
 
 参数:
 
-1. list  需要处理的动作数组
-2. this  该 Actions 实例
-3. index 该动作标签在 list 中的下标
+    n    对象, 含引用规则名的字符串属性 ref 和其它部分的对象属性 action.
+    self 当前的 Actions 实例
 
 返回布尔值 true 表示成功, false 表示失败.
 
-示例: 在 list 中强制使用空格作为缩进符号, 无论加载时使用了那个符号.
+执行阶段:
+
+以 ref 表示插件名称写在文法中. 可调用 Actions 实例的 before 方法添加触发事件.
+
+```js
+function before(key, extra){}
+```
+
+参数:
+
+    key   字符串, 表示事件函数名称, 对应的 'ON_key' 插事件函数必须存在.
+    extra 字符串, 表示传递给事件函数的参数
+
+该函数返回布尔值 true 表示成功, false 表示失败.
+
+如果无需添加触发事件, 执行阶段也要返回布尔值 true 表示成功, false 表示失败.
+
+事件阶段:
+
+由 Actions 内部机制在构建时首先触发
+
+```js
+function event(self, factors, index, node){}
+```
+
+参数:
+
+1. self     该 Actions 实例
+1. factors  需要处理的动作数组
+3. index    该事件在 factors 中的下标, factors[index] 已被设置为 null
+4. node     该动作节点值 factors[index]
+
+返回布尔值 true 表示成功, false 表示整个匹配彻底失败.
 
 下面列举内建插件
 
 ### ACTIONS
 
-这是所有其它插件的入口, 它有两个功能: 加载插件, 中断匹配
-
-加载插件: 加载 'EOF', 'CRLF' 两个插件
+加载插件: 示例加载 'EOF', 'CRLF' 两个插件
 
 ```abnf
-first      = loadplugin real-grammar-rule
-loadplugin = ACTIONS-EOF ACTIONS-CRLF
+first = ACTIONS-EOF ACTIONS-CRLF real-grammar-rule
 ```
-
-中断匹配: 中断当前正在进行的动作列表
-
-    ACTIONS-TRUE  对动作列表进行后期处理, 返回 true
-    ACTIONS-FALSE 返回 false
 
 ### EOF
 
-当允许匹配输入源尾部时使用, 显然 EOF 只能被匹配一次, 再次匹配会失败.
+当允许匹配输入源尾部时加载. EOF 只能被匹配一次, 再次匹配会失败.
 
     ACTIONS-EOF
 
 ### CRLF
 
-当需要在动作中记录行列位置时使用. 第三段表示回车风格.
+当需要在动作中记录行列位置时加载. 如果加载该插件总是被首先执行.
 
-    ACTIONS-CRLF          ---> ACTIONS-CRLF-ANYCRLF
-    ACTIONS-CRLF-CR
-    ACTIONS-CRLF-LF
-    ACTIONS-CRLF-CRLF
-    ACTIONS-CRLF-ANYCRLF
+    ACTIONS-CRLF
 
 行列位置都从 1 开始, 保存在 action 中:
 
@@ -356,54 +343,45 @@ loc:
   endCol: Int
 ```
 
-注意: 由于处理过程中动作关系会变化, 所以 start, end, line, col 也会变.
-
 ### OUTDENT
 
-当需要缩进语法(不是排版)时启用, 无需再写匹配行首缩进量的规则.
-如果 CRLF 插件未被加载, 那么会加载 CRLF.
-如果文法中加载了 CRLF, 那么必须在 OUTDENT 之前加载, 因为 OUTDENT 需要覆盖 CRLF 方法才能正确工作.
-
-使用单词 `OUTDENT` 而不是 `INDENT` 是因为采用的算法逻辑为:
-
-    缩进语法代码块从第二行开始, 行起始小于等于首行起始列时代码块结束
-    除非指定列外的规则能通过检查
-
-加载:
+当代码块需要缩进语法(不是排版)时加载. 该插件事件的下标(index)值必须为 0.
 
     ACTIONS-OUTDENT-SP  行首缩进符为空格(%x20)
     ACTIONS-OUTDENT-TAB 行首缩进符为水平制表符(%x09)
-    ACTIONS-OUTDENT     等价 ACTIONS-OUTDENT-TA
+    ACTIONS-OUTDENT     等价 ACTIONS-OUTDENT-TAB
 
-触发:
+该插件依赖 CRLF 插件, 如果 CRLF 未被加载将自动加载 CRLF.
 
-    OUTDENT           开始缩进检查
-    OUTDENT-allow-ref 如果通过 ref 规则检查允许一次例外
+使用单词 `OUTDENT` 而不是 `INDENT` 是因为采用下述算法:
 
-使用示例: 省略了一些规则的写法
+    代码块从第二行开始, 除非 allow, 行起始小于等于首行起始列时代码块结束
+
+格式:
+
+    OUTDENT       开始缩进检查
+    OUTDENT-allow 允许和上层首行相同的缩进, 并继续缩进检查
+
+示例: 省略了一些规则的写法
 
 ```abnf
-block     = OUTDENT statement
+block     = OUTDENT statement / expression-alone
 
-statement = IfStmt- / Block- / ForStmt-
+statement = IfStmt- / Block-alone
 
-IfStmt    = "if" *WSP "(" 1*cwsp expr-to-consequent 1*cwsp ")"
-            OUTDENT-allow-braces *cwsp "{"
-              block
-            OUTDENT-allow-braces "}"
-            [OUTDENT-allow-else else block-to-alternate]
+IfStmt    = "if" *cwsp "(" *cwsp expression-alone-test *cwsp ")" *cwsp
+            Block-alone-consequent [else-alone-alternate]
 
-Block     = "{" *cwsp block *cwsp "}"
+Block     = OUTDENT-allow "{" *cwsp block-alone *cwsp "}"
 
-braces    = "{" / "}
-else      = *cwsp "else" 1*cwsp
+else      = OUTDENT-allow *cwsp "else" 1*cwsp block-alone
 
-expr      = OUTDENT (
+expression= OUTDENT (
               group-alone / UnaryExpr-prefix- / NumericExpr-
             ) [BinaryExpr-infix-left-]
 
 Comment   = "//" *(%x20-7E)
-cwsp      = Comment-mark- / CRLF / 1*SP
+cwsp      = SP / HTAB / CRLF / Comment-mark-
 ```
 
 

@@ -58,6 +58,7 @@ var grammarThousands = [
 		['-1,234+5', '[[-1234]+5]'],
 	],
 	grammarExpression = [
+		'first        = ACTIONS-CRLF Expression',
 		'Expression   = ( NumericExpr- /',
 		'               UnaryExpr-prefix- /',
 		'               group-alone /',
@@ -67,9 +68,9 @@ var grammarThousands = [
 		'computed     = Ident- *(DotExpr-ahead-object- / IndexExpr-ahead-object- / CallExpr-ahead-callee-)',
 		'DotExpr      = "." Ident-to-property-',
 		'IndexExpr    = "[" Expression-alone-property "]"',
-		'CallExpr     = "(" [arguments] ")"',
+		'CallExpr     = "(" [arguments-alone-arguments-array] ")"',
 
-		'arguments    = Expression-alone-arguments--push *("," Expression-alone-arguments--push)',
+		'arguments    = Expression-alone *("," Expression-alone)',
 
 		'group        = "(" Expression ")"',
 		'UpdateExpr   = suffix-lit-operator',
@@ -99,16 +100,17 @@ var grammarThousands = [
 		['i.j()', '[[ij]]'],
 		['i.j(1)', '[[ij]1]'],
 		['i(j+2)', '[i[j+2]]'],
-		['i(j+2,k)', '[i[j+2]k]'],
-		['i.i(j+2,k)', '[[ii][j+2]k]'],
+		['i(j+2,k)', '[i[[j+2]k]]'],
+		['i.i(j+2,k)', '[[ii][[j+2]k]]'],
 		['i++', '[i++]'],
 		['++i', '[++i]'],
 		['++i++', '[++[i++]]'],
 		['i.j()+k*l', '[[[ij]]+[k*l]]'],
 		['i and k or l', '[[iandk]orl]'],
+		['i.i(j+2,k)+i and k or l', '[[[[[ii][[j+2]k]]+i]andk]orl]'],
 	];
 
-test('actions property', function(t, dump) {
+test('actions property', function(t) {
 	[
 		[
 			grammarActions,
@@ -140,11 +142,10 @@ test('actions property', function(t, dump) {
 		product.forEach(group, actual)
 		actual = actual.join(' ')
 		t.equal(actual, expected, message, [src, product, actual]);
-		//dump([message, src, product])
 	});
 });
 
-test('actions arithmetic', function(t, dump) {
+test('actions arithmetic', function(t) {
 	var actions,
 		rules = core.tokenize(grammarArithmetic, core.Entries, core.Rules);
 
@@ -162,11 +163,10 @@ test('actions arithmetic', function(t, dump) {
 		product.forEach(group, actual)
 		actual = actual.join('')
 		t.equal(actual, expected, 'arithmetic', [src, product, actual, expected]);
-		//dump([src, product])
 	})
 })
 
-test('actions expression', function(t, dump) {
+test('actions expression', function(t) {
 	var actions,
 		rules = core.tokenize(grammarExpression, core.Entries, core.Rules);
 
@@ -184,13 +184,10 @@ test('actions expression', function(t, dump) {
 		product.forEach(group, actual)
 		actual = actual.join('')
 		t.equal(actual, expected, 'expression', [src, product, actual, expected]);
-		//dump([src, product])
 	})
 });
 
 function group(p) {
-	// if (p.method && 'inner ahead'.indexOf(p.method) != -1)
-	// 	this.push('-------------') // error
 	if (p.raw) this.push(p.raw)
 	if (p.factors) {
 		this.push('[')
