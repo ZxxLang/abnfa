@@ -242,7 +242,7 @@ Actions 依据 Rules 生成的规则和输入源生成 AAT.
 匹配:
 
     自顶向下进行匹配, 自底向上生成动作
-    插件被执行时可创建插件事件, 但注意上级动作可能未生成.
+    插件被执行时可发出中断或创建插件事件, 但注意上级动作可能未生成.
     匹配过程可能直接生成子 factors, 比如 alone 方法
     每个 factors 都执行构建步骤.
 
@@ -264,10 +264,10 @@ Actions 依据 Rules 生成的规则和输入源生成 AAT.
 
     ACTIONS-PluginName-[args]-[args]-[args]
 
-如果存在加载函数 `LOAD_PluginName` 优先执行, 否则执行 `PluginName`.
+如果存在自加载函数 `LOAD_PluginName` 则执行, 否则执行 `PluginName`.
 
 ```js
-function plugin(n, self): bool {}
+function LoadOrExecutePlugin(n, self): bool {}
 ```
 
 参数:
@@ -275,11 +275,20 @@ function plugin(n, self): bool {}
     n    对象, 含引用规则名的字符串属性 ref 和其它部分的对象属性 action.
     self 当前的 Actions 实例
 
-返回布尔值 true 表示成功, false 表示失败.
+返回:
+
+    true  布尔值, 表示成功
+    false 布尔值, 表示失败
 
 执行阶段:
 
-以 ref 表示插件名称写在文法中. 可调用 Actions 实例的 before 方法添加触发事件.
+以 ref 表示插件名称写在文法中.
+
+发出中断, 在插件执行成功且需要中断后续匹配时使用. 操作:
+
+    插件设置 Actions 实例的属性 break = true 并返回 true 表示成功
+
+生成事件, 通过调用 Actions 实例的 before 方法.
 
 ```js
 function before(key, extra){}
@@ -288,7 +297,7 @@ function before(key, extra){}
 参数:
 
     key   字符串, 表示事件函数名称, 对应的 'ON_key' 插事件函数必须存在.
-    extra 字符串, 表示传递给事件函数的参数
+    extra 数组, 事件节点的 extra 属性值
 
 该函数返回布尔值 true 表示成功, false 表示失败.
 
@@ -307,33 +316,41 @@ function event(self, factors, index, node){}
 1. self     该 Actions 实例
 1. factors  需要处理的动作数组
 3. index    该事件在 factors 中的下标, factors[index] 已被设置为 null
-4. node     该动作节点值 factors[index]
+4. node     该事件节点值 factors[index]
 
-返回布尔值 true 表示成功, false 表示整个匹配彻底失败.
+返回:
+
+    true  布尔值, 表示成功
+    false 布尔值, 表示整个匹配彻底失败
 
 下面列举内建插件
 
 ### ACTIONS
 
-加载插件: 示例加载 'EOF', 'CRLF' 两个插件
+加载一个插件. 示例: 加载 'EOF', 'CRLF' 两个插件
 
 ```abnf
-first = ACTIONS-EOF ACTIONS-CRLF real-grammar-rule
+first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
 ```
 
 ### EOF
 
-当允许匹配输入源尾部时加载. EOF 只能被匹配一次, 再次匹配会失败.
+匹配输入源结尾.
 
     ACTIONS-EOF
 
+提示:
+
+    如果输入源必须全部被匹配时应该使用 EOF 插件.
+    否则前部被匹配也会成功.
+
 ### CRLF
 
-当需要在动作中记录行列位置时加载. 如果加载该插件总是被首先执行.
+在动作中记录行列位置. 该插件总是被首先执行.
 
     ACTIONS-CRLF
 
-行列位置都从 1 开始, 保存在 action 中:
+行列位置都从 1 开始, 保存在动作属性 loc 中:
 
 ```yaml
 loc:
@@ -345,7 +362,7 @@ loc:
 
 ### OUTDENT
 
-当代码块需要缩进语法(不是排版)时加载. 该插件事件的下标(index)值必须为 0.
+在代码块中进行缩进语法检查. 必须是 alone 方法内的首个动作.
 
     ACTIONS-OUTDENT-SP  行首缩进符为空格(%x20)
     ACTIONS-OUTDENT-TAB 行首缩进符为水平制表符(%x09)
@@ -353,37 +370,43 @@ loc:
 
 该插件依赖 CRLF 插件, 如果 CRLF 未被加载将自动加载 CRLF.
 
-使用单词 `OUTDENT` 而不是 `INDENT` 是因为采用下述算法:
+使用格式:
 
-    代码块从第二行开始, 除非 allow, 行起始小于等于首行起始列时代码块结束
+    OUTDENT-[allow]-[deny]-[NotBreak]
 
-格式:
+算法对比插件列开始位置(startCol)与后续行的列开始位置(col)的关系:
 
-    OUTDENT       开始缩进检查
-    OUTDENT-allow 允许和上层首行相同的缩进, 并继续缩进检查
+    col <  startCol 判定缩出, 结束 alone.
+    col >  startCol 规则 deny  测试失败继续, 否则判定失败.
+    col == startCol 规则 allow 测试成功继续, 否则依据 !NotBreak 判定缩出.
+
+其中 NotBreak 是任意的字符串,
 
 示例: 省略了一些规则的写法
 
 ```abnf
-block     = OUTDENT statement / expression-alone
+first       = ACTIONS-OUTDENT statement
 
-statement = IfStmt- / Block-alone
+statement   = IfStmt-alone- / Block-alone-
 
-IfStmt    = "if" *cwsp "(" *cwsp expression-alone-test *cwsp ")" *cwsp
-            Block-alone-consequent [else-alone-alternate]
+IfStmt      = OUTDENT-else-else
+              "if" *cwsp "(" *cwsp expression-inner-test *cwsp ")" *cwsp
+              Block-alone-consequent- *cwsp
+              [else statement-inner-alternate]
+else        = "else" 1*cwsp
 
-Block     = OUTDENT-allow "{" *cwsp block-alone *cwsp "}"
+Block       = OUTDENT-rightBracket--continue "{" *cwsp statement *cwsp "}"
 
-else      = OUTDENT-allow *cwsp "else" 1*cwsp block-alone
+expression  = Expression-alone
+Expression  = ( NumericExpr- / UnaryExpr-prefix- / group-alone )
+              [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]
 
-expression= OUTDENT (
-              group-alone / UnaryExpr-prefix- / NumericExpr-
-            ) [BinaryExpr-infix-left-]
+group        = OUTDENT-rightBracket--continue "(" Expression ")"
 
-Comment   = "//" *(%x20-7E)
-cwsp      = SP / HTAB / CRLF / Comment-mark-
+rightBracket = "}" / "]" / ")"
 ```
 
+提示: allow, deny 只是测试, 匹配会继续进行, 所以多种右括号可以写在测试中.
 
 # Demos
 

@@ -25,10 +25,11 @@ var grammarThousands = [
 	grammarActions = [
 		'Ref     = name-lit-ref ["-" Action-to-action-]',
 		'name    = ALPHA *(ALPHA / DIGIT)',
+		'extra   = ALPHA *(ALPHA / DIGIT / "-")',
 		'Action  = [name-lit-method] [',
 		'          "-" [name-lit-key] [',
 		'          "-" [name-lit-type] [',
-		'          "-" [name-lit-extra]]]]',
+		'          "-" [extra-lit-extra]]]]',
 		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarArithmetic = [
@@ -114,7 +115,7 @@ test('actions property', function(t) {
 	[
 		[
 			grammarActions,
-			'ref-method-key-type-extra', 'ref [ method key type extra ]', 'actions'
+			'ref-method-key-type-extra-extra', 'ref [ method key type extra-extra ]', 'actions'
 		],
 		[
 			grammarThousands,

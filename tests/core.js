@@ -32,11 +32,15 @@ test('tokenize unexpected matching', function(t) {
 		['symbols', '[r]'],
 		['symbols', '(r]'],
 		['symbols', '*r'],
+		['symbols', 'r = <1>'],
 		['brackets', 'r = ( [ )]'],
 		['brackets', 'r = (]'],
 		['brackets', 'r = ()]'],
 		['brackets', 'r = ()[]('],
 		['brackets', 'r = ()[])'],
+		['angle', 'r = <'],
+		['angle', 'r = >'],
+		['brackets', 'r = <'],
 		['incomplete', 'r'],
 		['incomplete', 'r='],
 		['incomplete', 'r ='],
@@ -52,13 +56,12 @@ test('tokenize unexpected matching', function(t) {
 		['DQUOTE', 'r = %idd'],
 		['DQUOTE', 'r = %i<dd>'],
 		['DQUOTE', 'r = %s "dd"'],
-		['prose', 'r = <'],
-		['symbols', 'r = <"">>'],
 		['symbols', 'r = %f"s"'],
 		['repeat', 'r = *1 ""'],
 		['repeat', 'r = 1*1*'],
 		['empty', ''],
-		['empty', ';']
+		['empty', ';'],
+		['1*8HEXDIG', 'r = %x123456789'],
 	];
 
 	tests.forEach(function(a, i) {
@@ -92,11 +95,12 @@ test('tokenize num range', function(t) {
 		'r = %d90.1000',
 		'r = %xaF.fA.9a.9F',
 		'r = %x9F-f9',
+		'r = <%x10000-1FFFD / %x20000-2FFFD>',
 	];
 
 	tests.forEach(function(s, i) {
 		var rules = core.tokenize(s, core.Entries, core.Rules)
-		t.errify(rules)
+		t.errify(rules, s)
 	})
 });
 

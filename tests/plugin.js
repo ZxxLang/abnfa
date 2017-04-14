@@ -5,7 +5,7 @@
 var test = require('./test'),
 	core = require('../lib/core'),
 	grammarCRLF = [
-		'first  = ACTIONS-CRLF 1*(*WSP i-lit- *WSP)',
+		'first  = ACTIONS-EOF ACTIONS-CRLF 1*(*WSP i-lit- *WSP) EOF',
 		'i      = "i"/"h"',
 		'WSP    = SP / CRLF',
 		'SP     = %x20',
@@ -13,15 +13,17 @@ var test = require('./test'),
 
 	grammarOUTDENT = [
 		'first  = ACTIONS-OUTDENT 1*block-alone',
-		'block  = OUTDENT if-',
-		'if     = "if true" 1*CWSP out-lit-body *CWSP',
-		'out    = "out"',
+		'block  = OUTDENT-else-else if-',
+		'if     = "if true" 1*CWSP 1*i-lit-body *CWSP [else 1*x-lit-else]',
+		'i      = "i"',
+		'x      = "x"',
+		'else   = "else" 1*CWSP',
 		'CWSP   = SP / HTAB / CRLF',
 		'HTAB   = %x09',
 		'SP     = %x20',
 	].join('\n');
 
-test('crlf', function(t) {
+test('crlf and eof', function(t) {
 	var actions = core.tokenize(grammarCRLF, core.Entries, core.Rules, core.Actions);
 
 	t.errify(actions);
@@ -52,16 +54,16 @@ test('crlf', function(t) {
 
 test('outdent', function(t) {
 	var actions = core.tokenize(grammarOUTDENT, core.Entries, core.Rules, core.Actions);
-
 	t.errify(actions);
-
 	[
-		['if true\nout', ''],
-		['if true out', '[out]'],
-		['if true\tout', '[out]'],
-		['if true\n\tout', '[out]'],
-		['if true\n\tout\nif true\n\tout', '[out][out]'],
-		['if true\tout\nif true\n\tout', '[out][out]'],
+		['if true\ni', ''],
+		['if true i', '[i]'],
+		['if true\tii', '[ii]'],
+		['if true\n\tiii', '[iii]'],
+		['if true\n\ti\nif true\n\ti', '[i][i]'],
+		['if true\tii\nif true\n\tii', '[ii][ii]'],
+		['if true\n\tii\nelse xx', '[iixx]'],
+		['if true\n\tii\n\telse xx', ''],
 	].forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
@@ -70,7 +72,7 @@ test('outdent', function(t) {
 
 		if (!expected)
 			return Array.isArray(product) &&
-				t.error('want error') ||
+				t.error('want error', src, product) ||
 				t.pass('got error')
 
 		t.errify(product, expected)
@@ -98,10 +100,4 @@ function groupLoc(p) {
 	this.push('(' +
 		loc.startLine + ':' + loc.startCol + '-' +
 		loc.endLine + ':' + loc.endCol + ')')
-
-	if (p.factors) {
-		this.push('[')
-		p.factors.forEach(groupLoc, this)
-		this.push(']')
-	}
 }
