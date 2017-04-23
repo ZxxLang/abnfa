@@ -68,8 +68,8 @@ var grammarThousands = [
 
 		'computed     = Ident- *(DotExpr-ahead-object- / IndexExpr-ahead-object- / CallExpr-ahead-callee-)',
 		'DotExpr      = "." Ident-to-property-',
-		'IndexExpr    = "[" Expression-alone-property "]"',
-		'CallExpr     = "(" [arguments-alone-arguments-array] ")"',
+		'IndexExpr    = "[" Expression-to-property "]"',
+		'CallExpr     = "(" [arguments-factors-arguments] ")"',
 
 		'arguments    = Expression-alone *("," Expression-alone)',
 
@@ -99,8 +99,8 @@ var grammarThousands = [
 		['i[j]', '[ij]'],
 		['i()', '[i]'],
 		['i.j()', '[[ij]]'],
-		['i.j(1)', '[[ij]1]'],
-		['i(j+2)', '[i[j+2]]'],
+		['i.j(1)', '[[ij][1]]'],
+		['i(j+2)', '[i[[j+2]]]'],
 		['i(j+2,k)', '[i[[j+2]k]]'],
 		['i.i(j+2,k)', '[[ii][[j+2]k]]'],
 		['i++', '[i++]'],
@@ -109,6 +109,54 @@ var grammarThousands = [
 		['i.j()+k*l', '[[[ij]]+[k*l]]'],
 		['i and k or l', '[[iandk]orl]'],
 		['i.i(j+2,k)+i and k or l', '[[[[[ii][[j+2]k]]+i]andk]orl]'],
+	],
+	grammarSubject = [
+		'first        = ACTIONS-CRLF Expression',
+		'Expression   = ( NumericExpr- /',
+		'               UnaryExpr-prefix- /',
+		'               group-alone /',
+		'               subject)',
+		'               [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]',
+
+		'subject      = Ident- [Subject-ahead-]',
+		'Subject      = *(DotExpr- / ListExpr-factors- / CallExpr-factors-)',
+		'DotExpr      = "." Ident',
+		'ListExpr     = "[" [Expression-alone *("," Expression-alone)] "]"',
+		'CallExpr     = "(" [Expression-alone *("," Expression-alone)] ")"',
+
+		'group        = "(" Expression ")"',
+		'UpdateExpr   = suffix-lit-operator',
+		'UnaryExpr    = prefix-lit-operator Expression-inner-operand',
+		'BinaryExpr   = ( infix-precedence-operator /',
+		'               SP infixSymbol-precedence-operator SP)',
+		'               Expression-inner-right',
+		'NumericExpr  = 1*DIGIT-lit',
+
+		'prefix       = "--" / "++" / "-"',
+		'suffix       = "--" / "++"',
+		'infix        = ("") / ("") / ("+" / "-") / ("*" / "/")',
+		'infixSymbol  = ("or") / ("and")',
+
+		'Ident        = 1*ALPHA-lit',
+		'SP           = %x20',
+		'ALPHA        = %x41-5A / %x61-7A',
+		'DIGIT        = %x30-39',
+	].join('\n'),
+	subjects = [
+		['i', 'i'],
+		['i.j', '[ij]'],
+		['i.j.k', '[ijk]'],
+		['i.j.k.l', '[ijkl]'],
+		['i[j]', '[i[j]]'],
+		['i()', '[i[]]'],
+		['i.j()', '[ij[]]'],
+		['i.j(1)', '[ij[1]]'],
+		['i(j+2)', '[i[[j+2]]]'],
+		['i(j+2,k)', '[i[[j+2]k]]'],
+		['i.i(j+2,k)', '[ii[[j+2]k]]'],
+		['i.j()+k*l', '[[ij[]]+[k*l]]'],
+		['k*l+i.j()', '[[k*l]+[ij[]]]'],
+		['i.i(j+2,k)[3]', '[ii[[j+2]k][3]]'],
 	];
 
 test('actions property', function(t) {
@@ -188,6 +236,26 @@ test('actions expression', function(t) {
 	})
 });
 
+test('actions subject', function(t) {
+	var actions,
+		rules = core.tokenize(grammarSubject, core.Entries, core.Rules);
+
+	t.errify(rules);
+	actions = new core.Actions(rules);
+
+	subjects.forEach(function(a) {
+		var src = a[0],
+			expected = a[1],
+			actual = [],
+			product = actions.parse(src);
+
+		t.errify(product, src)
+
+		product.forEach(group, actual)
+		actual = actual.join('')
+		t.equal(actual, expected, 'subject', [src, product, actual, expected]);
+	})
+});
 function group(p) {
 	if (p.raw) this.push(p.raw)
 	if (p.factors) {

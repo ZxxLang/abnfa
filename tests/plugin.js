@@ -12,18 +12,38 @@ var test = require('./test'),
 	].join('\n'),
 
 	grammarOUTDENT = [
-		'first  = ACTIONS-OUTDENT 1*block-alone',
-		'block  = OUTDENT-else-else if-',
-		'if     = "if true" 1*CWSP 1*i-lit-body *CWSP [else 1*x-lit-else]',
-		'i      = "i"',
-		'x      = "x"',
+		'first     = ACTIONS-DENY ACTIONS-OUTDENT ACTIONS-EXISTS',
+		'            OUTDENT statement *(1*CWSP statement) *CWSP',
+		'statement  = ifStmt-alone- / block-alone / ident',
+		'statements = OUTDENT 1*(*CWSP statement)',
+
+		'ifStmt = "if" OUTDENT-else-else EXISTS-test-consequent',
+		'         1*CWSP expr-alone-test',
+		'         statements-factors-consequent',
+		'         [1*CWSP else statements-factors-alternate]',
 		'else   = "else" 1*CWSP',
+
+		'ident      = Identifier-lit- DENY-keywords',
+		'Identifier = ALPHA *(ALPHA / DIGIT)',
+		'keywords   = "else" / "if"',
+
+		'expr   = ident / block-alone',
+		'block  = OUTDENT-rightBracket--continue (',
+		'         "{" *CWSP *expr *CWSP "}" /',
+		'         list-factors- /',
+		'         "(" *CWSP *expr *CWSP ")")',
+		'list   = "[" *CWSP [expr *("," expr) [","]] *CWSP "]"',
+		'rightBracket = "}" / "]" / ")"',
+
 		'CWSP   = SP / HTAB / CRLF',
 		'HTAB   = %x09',
 		'SP     = %x20',
-	].join('\n');
+		'ALPHA  = %x41-5A / %x61-7A', 'DIGIT  = %x30-39'
+	].join('\n'),
+	grammarOUTDENT_SP = grammarOUTDENT.replace('ACTIONS-OUTDENT',
+		'ACTIONS-OUTDENT-SP');
 
-test('crlf and eof', function(t) {
+0 && test('crlf and eof', function(t) {
 	var actions = core.tokenize(grammarCRLF, core.Entries, core.Rules, core.Actions);
 
 	t.errify(actions);
@@ -53,35 +73,54 @@ test('crlf and eof', function(t) {
 })
 
 test('outdent', function(t) {
-	var actions = core.tokenize(grammarOUTDENT, core.Entries, core.Rules, core.Actions);
+	var actions = core.tokenize(grammarOUTDENT, core.Entries,
+			core.Rules, core.Actions),
+		actionsSP = core.tokenize(grammarOUTDENT_SP, core.Entries,
+			core.Rules, core.Actions);
+
 	t.errify(actions);
+	t.errify(actionsSP);
+
 	[
-		['if true\ni', ''],
-		['if true i', '[i]'],
-		['if true\tii', '[ii]'],
-		['if true\n\tiii', '[iii]'],
-		['if true\n\ti\nif true\n\ti', '[i][i]'],
-		['if true\tii\nif true\n\tii', '[ii][ii]'],
-		['if true\n\tii\nelse xx', '[iixx]'],
-		['if true\n\tii\n\telse xx', ''],
+		['if t\nnewline', ''],
+		['if t do', '[t[do]]'],
+		['if (t)\n\ti\n\tx', '[t[ix]]'],
+		['if (t) {i}', '[t[i]]'],
+		['if (t) {\n\ti\n}', '[t[i]]'],
+		['if (t) [i]', '[t[[i]]]'],
+		['if (t) [\n\ti,x]', '[t[[ix]]]'],
+		['if t\ti\tx', '[t[ix]]'],
+		['if t\ti\nx', '[t[i]]x'],
+		['if t\n\ti\nif t\n\ti', '[t[i]][t[i]]'],
+		['if t i\nif t i', '[t[i]][t[i]]'],
+		['if t i else x', '[t[i][x]]'],
+		['if t\n\ti\nelse x', '[t[i][x]]'],
+		['if t\n\t\ti\nelse x', '[t[i][x]]'],
+		['if t\n\t\ti\nelse x', '[t[i][x]]'],
+		['if t\n\t\ti\nelse\n\tx', '[t[i][x]]'],
+		['if t i\n\t\ti\nelse x\n\tx\n\tx', '[t[ii][xxx]]'],
 	].forEach(function(a) {
-		var src = a[0],
+		var product, src = a[0],
 			expected = a[1],
-			actual = [],
-			product = this.parse(src);
+			actual, i;
+		for (i = 0; i < 2; i++) {
+			actual = []
+			product = !i && actions.parse(src) ||
+				actionsSP.parse(src.replace(/\t/g, ' '));
 
-		if (!expected)
-			return Array.isArray(product) &&
-				t.error('want error', src, product) ||
-				t.pass('got error')
+			if (!expected)
+				return Array.isArray(product) &&
+					t.error('want error', src, product) ||
+					t.pass('got error')
 
-		t.errify(product, expected)
+			t.errify(product, expected)
 
-		product.forEach(group, actual)
+			product.forEach(group, actual)
 
-		t.equal(actual.join(''), expected, expected, [product, this.eols.join(','), actual]);
-
-	}, actions)
+			actual = actual.join('')
+			t.equal(actual, expected, expected, [product, expected, actual]);
+		}
+	})
 })
 
 function group(p) {

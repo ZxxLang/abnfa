@@ -21,7 +21,7 @@ ref       = name
 method    = name
 key       = name
 type      = name
-extra     = ALPHA *(*"-" (ALPHA / DIGIT))
+extra     = 1*(ALPHA / DIGIT) *(["-"] 1*(ALPHA / DIGIT))
 ```
 
 因该扩展描述了生成 AST 节点对象的动作信息, 被命名为 Actions.
@@ -154,13 +154,19 @@ operatorAlpha   = ("or") /
 
 注意: precedence 最小值是从 1 开始的.
 
-### alone
+### factors
 
 当 ref 生成独立的 source 时使用, source 的归属由上层确定.
 
     ref-alone ---> source.factors = []
 
-常用于分组表达式, 被括号包裹的, 被逗号分隔的, 表达式运算子等.
+常用于数组, 参数列表等.
+
+### alone
+
+基于 factors 当 factors.length == 1 时 source = factors[0].
+
+常用于分组表达式等.
 
 ### ahead
 
@@ -360,6 +366,12 @@ loc:
   endCol: Int
 ```
 
+### EXISTS
+
+自 factors[index] 之检查后指定顺序 key 值的动作.
+
+    EXISTS-key-[key...]
+
 ### OUTDENT
 
 在代码块中进行缩进语法检查. 必须是 alone 方法内的首个动作.
@@ -372,13 +384,13 @@ loc:
 
 使用格式:
 
-    OUTDENT-[allow]-[deny]-[NotBreak]
+    OUTDENT-[allow]-[deny]
 
 算法对比插件列开始位置(startCol)与后续行的列开始位置(col)的关系:
 
     col <  startCol 判定缩出, 结束 alone.
     col >  startCol 规则 deny  测试失败继续, 否则判定失败.
-    col == startCol 规则 allow 测试成功继续, 否则依据 !NotBreak 判定缩出.
+    col == startCol 规则 allow 测试成功继续, 否则判定缩出.
 
 其中 NotBreak 是任意的字符串,
 
@@ -389,24 +401,40 @@ first       = ACTIONS-OUTDENT statement
 
 statement   = IfStmt-alone- / Block-alone-
 
-IfStmt      = OUTDENT-else-else
-              "if" *cwsp "(" *cwsp expression-inner-test *cwsp ")" *cwsp
+IfStmt      = "if" OUTDENT-else-else EXISTS-test-consequent
+              "if" *cwsp "(" *cwsp Expression-alone-test *cwsp ")" *cwsp
               Block-alone-consequent- *cwsp
               [else statement-inner-alternate]
 else        = "else" 1*cwsp
 
-Block       = OUTDENT-rightBracket--continue "{" *cwsp statement *cwsp "}"
+Block       = OUTDENT-rightBracket "{" *cwsp statement *cwsp "}"
 
-expression  = Expression-alone
 Expression  = ( NumericExpr- / UnaryExpr-prefix- / group-alone )
               [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]
 
-group        = OUTDENT-rightBracket--continue "(" Expression ")"
+group        = OUTDENT-rightBracket "(" Expression ")"
 
 rightBracket = "}" / "]" / ")"
 ```
 
 提示: allow, deny 只是测试, 匹配会继续进行, 所以多种右括号可以写在测试中.
+
+### DENY
+
+向前检查动作的 raw 属性, 并拒绝某些值.
+使用格式:
+
+    DENY-ref
+
+示例: 拒绝 Identifier 使用关键字
+
+```abnf
+first      = ACTIONS-DENY Identifier- DENY-keywords
+Identifier = ALPHA *(ALPHA / DIGIT)
+keywords   = "if" / "else" / "function"
+ALPHA      = %x41-5A / %x61-7A
+DIGIT      = %x30-39
+```
 
 # Demos
 
