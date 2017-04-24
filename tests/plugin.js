@@ -12,27 +12,26 @@ var test = require('./test'),
 	].join('\n'),
 
 	grammarOUTDENT = [
-		'first     = ACTIONS-DENY ACTIONS-OUTDENT ACTIONS-EXISTS',
-		'            OUTDENT statement *(1*CWSP statement) *CWSP',
-		'statement  = ifStmt-alone- / block-alone / ident',
-		'statements = OUTDENT 1*(*CWSP statement)',
+		'first      = ACTIONS-DENY ACTIONS-OUTDENT ACTIONS-EXISTS',
+		'             *CWSP statement *(1*CWSP [statement])',
+		'statement  = ifStmt-alone- / block-alone / list-factors- / ident',
+		'statements = OUTDENT 1*CWSP statement *(1*CWSP statement)',
 
 		'ifStmt = "if" OUTDENT-else-else EXISTS-test-consequent',
 		'         1*CWSP expr-alone-test',
 		'         statements-factors-consequent',
-		'         [1*CWSP else statements-factors-alternate]',
+		'         [1*CWSP "else" statements-factors-alternate]',
 		'else   = "else" 1*CWSP',
 
 		'ident      = Identifier-lit- DENY-keywords',
 		'Identifier = ALPHA *(ALPHA / DIGIT)',
 		'keywords   = "else" / "if"',
 
-		'expr   = ident / block-alone',
-		'block  = OUTDENT-rightBracket--continue (',
-		'         "{" *CWSP *expr *CWSP "}" /',
-		'         list-factors- /',
-		'         "(" *CWSP *expr *CWSP ")")',
-		'list   = "[" *CWSP [expr *("," expr) [","]] *CWSP "]"',
+		'expr   = block-alone / list-factors- / ident',
+		'block  = "{" OUTDENT-rightBracket--continue *CWSP *expr *CWSP "}" /',
+		'         "(" OUTDENT-rightBracket--continue *CWSP *expr *CWSP ")"',
+		'list   = "[" OUTDENT-rightBracket--continue *CWSP [expr *("," expr) [","]] *CWSP "]"',
+
 		'rightBracket = "}" / "]" / ")"',
 
 		'CWSP   = SP / HTAB / CRLF',
@@ -43,7 +42,7 @@ var test = require('./test'),
 	grammarOUTDENT_SP = grammarOUTDENT.replace('ACTIONS-OUTDENT',
 		'ACTIONS-OUTDENT-SP');
 
-0 && test('crlf and eof', function(t) {
+test('crlf and eof', function(t) {
 	var actions = core.tokenize(grammarCRLF, core.Entries, core.Rules, core.Actions);
 
 	t.errify(actions);
@@ -77,11 +76,18 @@ test('outdent', function(t) {
 			core.Rules, core.Actions),
 		actionsSP = core.tokenize(grammarOUTDENT_SP, core.Entries,
 			core.Rules, core.Actions);
-
+	//t.dump(actions)
 	t.errify(actions);
 	t.errify(actionsSP);
 
 	[
+		['i','i'],
+		['i\nx','ix'],
+		['\ni','i'],
+		['\ni\nx','ix'],
+		['\ti\nx','ix'],
+		['\ti\n\tx','ix'],
+		['\n\t\ti\nx','ix'],
 		['if t\nnewline', ''],
 		['if t do', '[t[do]]'],
 		['if (t)\n\ti\n\tx', '[t[ix]]'],
@@ -93,16 +99,19 @@ test('outdent', function(t) {
 		['if t\ti\nx', '[t[i]]x'],
 		['if t\n\ti\nif t\n\ti', '[t[i]][t[i]]'],
 		['if t i\nif t i', '[t[i]][t[i]]'],
-		['if t i else x', '[t[i][x]]'],
-		['if t\n\ti\nelse x', '[t[i][x]]'],
-		['if t\n\t\ti\nelse x', '[t[i][x]]'],
-		['if t\n\t\ti\nelse x', '[t[i][x]]'],
-		['if t\n\t\ti\nelse\n\tx', '[t[i][x]]'],
+		['if t i1 else x', '[t[i1][x]]'],
+		['if t\n\ti2\nelse x', '[t[i2][x]]'],
+		['if t\n\t\ti3\nelse x', '[t[i3][x]]'],
+		['if t\n\t\ti4\nelse x', '[t[i4][x]]'],
+		['if t\n\t\ti5\nelse\n\tx', '[t[i5][x]]'],
 		['if t i\n\t\ti\nelse x\n\tx\n\tx', '[t[ii][xxx]]'],
-	].forEach(function(a) {
+
+		['\n\tif t\n\t\ti\nif t\n\ti', '[t[i]][t[i]]'],
+	].forEach(function(a, i) {
 		var product, src = a[0],
 			expected = a[1],
-			actual, i;
+			actual;
+
 		for (i = 0; i < 2; i++) {
 			actual = []
 			product = !i && actions.parse(src) ||
