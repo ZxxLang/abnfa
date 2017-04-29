@@ -4,41 +4,45 @@
 
 var test = require('./test'),
 	core = require('../lib/core'),
+	ason = require('../lib/ason'),
 	grammarCRLF = [
 		'first  = ACTIONS-EOF ACTIONS-CRLF 1*(*WSP i-lit- *WSP) EOF',
 		'i      = "i"/"h"',
 		'WSP    = SP / CRLF',
 		'SP     = %x20',
 	].join('\n'),
-
-	grammarOUTDENT = [
-		'first      = ACTIONS-DENY ACTIONS-OUTDENT ACTIONS-EXISTS',
-		'             *CWSP statement *(1*CWSP [statement])',
-		'statement  = ifStmt-alone- / block-alone / list-factors- / ident',
-		'statements = OUTDENT 1*CWSP statement *(1*CWSP statement)',
-
-		'ifStmt = "if" OUTDENT-else-else EXISTS-test-consequent',
-		'         1*CWSP expr-alone-test',
-		'         statements-factors-consequent',
-		'         [1*CWSP "else" statements-factors-alternate]',
-		'else   = "else" 1*CWSP',
-
-		'ident      = Identifier-lit- DENY-keywords',
-		'Identifier = ALPHA *(ALPHA / DIGIT)',
-		'keywords   = "else" / "if"',
-
-		'expr   = block-alone / list-factors- / ident',
-		'block  = "{" OUTDENT-rightBracket--continue *CWSP *expr *CWSP "}" /',
-		'         "(" OUTDENT-rightBracket--continue *CWSP *expr *CWSP ")"',
-		'list   = "[" OUTDENT-rightBracket--continue *CWSP [expr *("," expr) [","]] *CWSP "]"',
-
-		'rightBracket = "}" / "]" / ")"',
-
-		'CWSP   = SP / HTAB / CRLF',
-		'HTAB   = %x09',
-		'SP     = %x20',
-		'ALPHA  = %x41-5A / %x61-7A', 'DIGIT  = %x30-39'
+	grammarFLAG = [
+		'first   = ACTIONS-FLAG Object- *(" " Object-)',
+		'Object  = "." Member--property- FLAG-pub / Member--property-',
+		'Member  = 1*ALPHA-lit',
+		'ALPHA   = %x41-5A / %x61-7A',
 	].join('\n'),
+	grammarOUTDENT = '\n\
+		first      = ACTIONS-DENY ACTIONS-OUTDENT ACTIONS-OWN\n\
+		             *CWSP statement *(1*CWSP [statement])\n\
+		statement  = ifStmt-alone- / block-alone / list-factors- / ident\n\
+		statements = OUTDENT 1*CWSP statement *(*WSP CRLF 1*WSP statement)\n\
+		ifStmt = "if" OUTDENT-else-else OWN-test-consequent\n\
+		         1*CWSP expr-alone-test\n\
+		         (1*WSP statement-factors-consequent [1*WSP "else" statements-factors-alternate] /\n\
+		         statements-factors-consequent)\n\
+		         [1*CWSP "else" statements-factors-alternate]\n\
+		else   = "else" 1*CWSP\n\
+		ident      = Identifier-lit- DENY-keywords\n\
+		Identifier = ALPHA *(ALPHA / DIGIT)\n\
+		keywords   = "else" / "if" / predefine \n\
+		predefine  = "iota" / "void"\n\
+		expr   = block-alone / list-factors- / ident\n\
+		block  = "{" OUTDENT-rightBracket--continue *CWSP *expr *CWSP "}" /\n\
+		         "(" OUTDENT-rightBracket--continue *CWSP *expr *CWSP ")"\n\
+		list   = "[" OUTDENT-rightBracket--continue *CWSP [expr *("," expr) [","]] *CWSP "]"\n\
+		rightBracket = "}" / "]" / ")"\n\
+		WSP    = SP / HTAB\n\
+		CWSP   = WSP / CRLF\n\
+		HTAB   = %x09\n\
+		SP     = %x20\n\
+		ALPHA  = %x41-5A / %x61-7A\n\
+		DIGIT  = %x30-39',
 	grammarOUTDENT_SP = grammarOUTDENT.replace('ACTIONS-OUTDENT',
 		'ACTIONS-OUTDENT-SP');
 
@@ -71,23 +75,46 @@ test('crlf and eof', function(t) {
 	}, actions)
 })
 
+test('flag', function(t) {
+	var actions = core.tokenize(grammarFLAG,
+		core.Entries, core.Rules, core.Actions);
+
+	t.errify(actions);
+
+	[
+		['i', 'Object[Member~property"i"]'],
+		['.i', 'Object[Member-pub~property"i"]'],
+		['i .x', 'Object[Member~property"i"],Object[Member-pub~property"x"]'],
+	].forEach(function(a) {
+
+		var src = a[0],
+			expected = a[1],
+			actual = [],
+			product = actions.parse(src);
+
+		t.errify(product, src)
+		actual = ason.serialize(product)
+		t.equal(actual, expected, src, [expected, actual, product]);
+	})
+})
+
 test('outdent', function(t) {
 	var actions = core.tokenize(grammarOUTDENT, core.Entries,
 			core.Rules, core.Actions),
 		actionsSP = core.tokenize(grammarOUTDENT_SP, core.Entries,
 			core.Rules, core.Actions);
-	//t.dump(actions)
+
 	t.errify(actions);
 	t.errify(actionsSP);
 
 	[
-		['i','i'],
-		['i\nx','ix'],
-		['\ni','i'],
-		['\ni\nx','ix'],
-		['\ti\nx','ix'],
-		['\ti\n\tx','ix'],
-		['\n\t\ti\nx','ix'],
+		['i', 'i'],
+		['i\nx', 'ix'],
+		['\ni', 'i'],
+		['\ni\nx', 'ix'],
+		['\ti\nx', 'ix'],
+		['\ti\n\tx', 'ix'],
+		['\n\t\ti\nx', 'ix'],
 		['if t\nnewline', ''],
 		['if t do', '[t[do]]'],
 		['if (t)\n\ti\n\tx', '[t[ix]]'],
@@ -95,16 +122,16 @@ test('outdent', function(t) {
 		['if (t) {\n\ti\n}', '[t[i]]'],
 		['if (t) [i]', '[t[[i]]]'],
 		['if (t) [\n\ti,x]', '[t[[ix]]]'],
-		['if t\ti\tx', '[t[ix]]'],
+		['if t\ti', '[t[i]]'],
 		['if t\ti\nx', '[t[i]]x'],
 		['if t\n\ti\nif t\n\ti', '[t[i]][t[i]]'],
 		['if t i\nif t i', '[t[i]][t[i]]'],
-		['if t i1 else x', '[t[i1][x]]'],
+		['if t single else x', '[t[single][x]]'],
 		['if t\n\ti2\nelse x', '[t[i2][x]]'],
 		['if t\n\t\ti3\nelse x', '[t[i3][x]]'],
 		['if t\n\t\ti4\nelse x', '[t[i4][x]]'],
 		['if t\n\t\ti5\nelse\n\tx', '[t[i5][x]]'],
-		['if t i\n\t\ti\nelse x\n\tx\n\tx', '[t[ii][xxx]]'],
+		['if t \n\t\ti\nelse x\n\tx\n\tx', '[t[i][xxx]]'],
 
 		['\n\tif t\n\t\ti\nif t\n\ti', '[t[i]][t[i]]'],
 	].forEach(function(a, i) {
@@ -119,7 +146,7 @@ test('outdent', function(t) {
 
 			if (!expected)
 				return Array.isArray(product) &&
-					t.error('want error', src, product) ||
+					t.fail(src, product) ||
 					t.pass('got error')
 
 			t.errify(product, expected)
@@ -129,7 +156,20 @@ test('outdent', function(t) {
 			actual = actual.join('')
 			t.equal(actual, expected, expected, [product, expected, actual]);
 		}
-	})
+	});
+
+	[
+		['iota', 'if iota i'],
+		['void', 'if void i'],
+		['iota', 'if t\n\tiota'],
+		['iota', 'if t\n\ti\nelse iota'],
+		['iota', 'if t\n\ti\nelse \n\t\tiota'],
+	].forEach(function(a) {
+		var err = actions.parse(a[1]);
+		t.type(err, Error)
+		t.has(err.message, a[0], a[1])
+	});
+
 })
 
 function group(p) {

@@ -4,7 +4,7 @@ var yaml = require('js-yaml');
 tap.pass('wrap t.end() and dump');
 tap.Test.prototype.addAssert('errify', 1, function(err, message, extra) {
 	if (err instanceof Error) {
-		this.fail(message, extra)
+		this.fail(message)
 		throw err
 	}
 })

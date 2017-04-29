@@ -89,6 +89,7 @@ test('tokenize c-nl', function(t) {
 
 test('tokenize num range', function(t) {
 	var tests = [
+		'r = %x09 / %x20',
 		'r = %b0101-1000',
 		'r = %b0101.1000',
 		'r = %d90-100',

@@ -23,23 +23,25 @@ var grammarThousands = [
 		'SP        = %x20'
 	].join('\n'),
 	grammarActions = [
-		'Ref     = name-lit-ref ["-" Action-to-action-]',
-		'name    = ALPHA *(ALPHA / DIGIT)',
-		'extra   = ALPHA *(ALPHA / DIGIT / "-")',
-		'Action  = [name-lit-method] [',
-		'          "-" [name-lit-key] [',
-		'          "-" [name-lit-type] [',
-		'          "-" [extra-lit-extra]]]]',
-		'ALPHA   = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
+		'action    = name--ref ["-" Action-factors-action-]',
+		'name      = raw-lit',
+		'Action    = [name--method] [',
+		'            "-" [name--key] [',
+		'            "-" [name--type] [',
+		'            "-" [extra--extra]]]]',
+		'extra     = extras-lit',
+		'extras    = 1*(ALPHA / DIGIT / "-")',
+		'raw       = 1*(ALPHA / DIGIT)',
+		'ALPHA     = %x41-5A / %x61-7A', 'DIGIT   = %x30-39'
 	].join('\n'),
 	grammarArithmetic = [
-		'Expression   = ( NumericExpr- /',
-		'               UnaryExpr-prefix- /',
-		'               group-alone )',
+		'Expression   = (NumericExpr- /',
+		'                UnaryExpr-prefix- /',
+		'                group-alone)',
 		'               [BinaryExpr-infix-left-]',
 		'group        = "(" Expression ")"',
-		'UnaryExpr    = minus-lit-operator Expression-inner-operand',
-		'BinaryExpr   = operator-precedence-operator Expression-inner-right',
+		'UnaryExpr    = minus-lit-operator Expression-next-operand',
+		'BinaryExpr   = operator-precedence-operator Expression-next-right',
 		'NumericExpr  = 1*3DIGIT-lit *("," 3DIGIT-lit)',
 		'minus        = "-"',
 		'operator     = ("+" / "-") / ("*" / "/")',
@@ -75,10 +77,10 @@ var grammarThousands = [
 
 		'group        = "(" Expression ")"',
 		'UpdateExpr   = suffix-lit-operator',
-		'UnaryExpr    = prefix-lit-operator Expression-inner-operand',
+		'UnaryExpr    = prefix-lit-operator Expression-next-operand',
 		'BinaryExpr   = ( infix-precedence-operator /',
 		'               SP infixSymbol-precedence-operator SP)',
-		'               Expression-inner-right',
+		'               Expression-next-right',
 		'NumericExpr  = 1*DIGIT-lit',
 
 		'prefix       = "--" / "++" / "-"',
@@ -126,10 +128,10 @@ var grammarThousands = [
 
 		'group        = "(" Expression ")"',
 		'UpdateExpr   = suffix-lit-operator',
-		'UnaryExpr    = prefix-lit-operator Expression-inner-operand',
+		'UnaryExpr    = prefix-lit-operator Expression-next-operand',
 		'BinaryExpr   = ( infix-precedence-operator /',
 		'               SP infixSymbol-precedence-operator SP)',
-		'               Expression-inner-right',
+		'               Expression-next-right',
 		'NumericExpr  = 1*DIGIT-lit',
 
 		'prefix       = "--" / "++" / "-"',
@@ -157,6 +159,16 @@ var grammarThousands = [
 		['i.j()+k*l', '[[ij[]]+[k*l]]'],
 		['k*l+i.j()', '[[k*l]+[ij[]]]'],
 		['i.i(j+2,k)[3]', '[ii[[j+2]k][3]]'],
+	],
+	grammarObject = '\n\
+		first   = Number- / Object-factors-\n\
+		Object  = "{" [Pair- *("," Pair-)] "}"\n\
+		Pair    = 1*ALPHA-lit ":" first\n\
+		Number  = 1*DIGIT-lit\n\
+		ALPHA   = %x41-5A / %x61-7A\n\
+		DIGIT   = %x30-39',
+	object = [
+		['{a:1,b:{c:2}}', '[a1b[c2]]'],
 	];
 
 test('actions property', function(t) {
@@ -187,7 +199,6 @@ test('actions property', function(t) {
 			product = core.tokenize(abnf, core.Entries, core.Rules, actions);
 
 		t.errify(product, message)
-
 		product.forEach(group, actual)
 		actual = actual.join(' ')
 		t.equal(actual, expected, message, [src, product, actual]);
@@ -201,7 +212,7 @@ test('actions arithmetic', function(t) {
 	t.errify(rules);
 	actions = new core.Actions(rules);
 
-	arithmetics.forEach(function(a) {
+	arithmetics.forEach(function(a,i) {
 		var src = a[0],
 			expected = a[1],
 			actual = [],
@@ -256,6 +267,42 @@ test('actions subject', function(t) {
 		t.equal(actual, expected, 'subject', [src, product, actual, expected]);
 	})
 });
+
+test('object', function(t) {
+	var actions,
+		rules = core.tokenize(grammarObject, core.Entries, core.Rules);
+
+	t.errify(rules);
+	actions = new core.Actions(rules);
+
+	object.forEach(function(a) {
+		var src = a[0],
+			expected = a[1],
+			actual = [],
+			product = actions.parse(src);
+
+		t.errify(product, src)
+
+		product.forEach(group, actual)
+		actual = actual.join('')
+		t.equal(actual, expected, 'custom', [src, expected, actual, product]);
+	})
+});
+
+test('ident', function(t) {
+	var grammar = '\
+		first = ident-lit--Ident\n\
+		ident = 1*ALPHA [["-"] 1*(ALPHA / DIGIT)]\n\
+		ALPHA = %x41-5A / %x61-7A\n\
+		DIGIT = %x30-39',
+		product = core.tokenize(grammar, core.Entries, core.Rules,
+			new core.Actions('utf-8'));
+
+	t.errify(product)
+	t.equal(product.length, 1)
+	t.equal(product[0].raw, 'utf-8')
+});
+
 function group(p) {
 	if (p.raw) this.push(p.raw)
 	if (p.factors) {

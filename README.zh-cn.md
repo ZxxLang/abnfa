@@ -9,129 +9,117 @@ rule      =  rulename defined-as elements c-nl
 rulename  =  ALPHA *(ALPHA / DIGIT / "-")
 ```
 
-ABNFA 部分动作语义定义:
+ABNFA 的定义:
 
 ```abnf
-rule      = action defined-as elements c-nl
+rule      = action definedas elements cnl
+rulename  = ALPHA *(ALPHA / DIGIT)
+argument  = 1*(ALPHA / DIGIT)
 
-action    = ref  ["-" [method] ["-" [key] ["-" [type] ["-" [extra] ]]]]
+action    = ref [tail]
+tail      = "-" [method] ["-" key] ["-" type]
+            *(ALPHA / DIGIT / "-")
 
-name      = ALPHA *(ALPHA / DIGIT)
-ref       = name
-method    = name
-key       = name
-type      = name
-extra     = 1*(ALPHA / DIGIT) *(["-"] 1*(ALPHA / DIGIT))
+ref       = rulename
+type      = argument
+method    = argument
+key       = 1*(ALPHA / DIGIT / "_")
 ```
 
-因该扩展描述了生成 AST 节点对象的动作信息, 被命名为 Actions.
+即 action 的结构为:
+
+```yaml
+action:
+  ref: String
+  tail: String
+  method: String
+  key: String
+  type: String
+```
+
+该结构包含如何生成 AST 节点对象的信息, 所以该扩展命名为 Actions.
 
 # Specifications
 
-完整的规则引用格式为五段式:
-
-    ref-method-key-type-extra
+1. 大小写敏感
+2. 符号 "-" 被用做分隔符
+3. 从首个规则开始匹配输入源
+4. 文法描述顺序为自顶向下, 从左向右
+5. 规则 `rule = "" other` 中的 `""` 总是被匹配失败
+6. tail 存储 action.ref 之后的字符串
+7. 含 method 或 key 或 type 的动作产生动作对象
 
 等价简写格式: 以 '-' 结尾, 表示 type 和 ref 同名.
 
     ref-                   === ref---ref
     ref-method-            === ref-method--ref
     ref-method-key-        === ref-method-key-ref
-    ref-method-key-extra-  === ref-method-key-ref-extra
+    ref-method-key-more-   === ref-method-key-ref-more
 
-约定:
+最终匹配输入源后产生动作数组, 该数组称作 Abstract Actions Tree (AAT).
 
-1. 规则名大小写敏感
-2. 符号 "-" 被 Action 专用
-3. 匹配输入源时从首个规则名开始
-4. 引用规则含有 Action 且被匹配的输入源才会被保留
-5. 文法描述顺序为自顶向下, 从左向右.
-6. 规则 'rule = "" other' 中的空字符串总是不被匹配
+AAT 元素为动作对象, 包含生成 AST 节点的信息.
+在下文中单词 `动作` 表示动作数组的元素, `节点` 表示 AST 节点.
 
-核心工具依据文法规则解析输入字符串产生动作数组, 其元素和结构类型为:
+动作对象结构:
 
 ```yaml
 Action:
-  start: Int
-  end: Int
-  raw: String
-  factors: [Action]
-  precedence: Int
-  type: String
-  method: String
-  key: String
-  extra: [String]
+  start: 0        # 该动作匹配输入的开始偏移量.
+  end: 1          # 该动作匹配输入的结束偏移量(不包含 end)
+  type: string    # AST 节点的类型名称
+  key: string     # 该节点在父节点的属性名
+  raw: string     # 用于叶子节点, 保留匹配的原始字符串.
+  method: string  # 表示如何赋值到父节点, 分为三类
+                  #   note 注释节点
+                  #   push 表示 parentNode[key].push(thisNode)
+                  #   其它 表示 parentNode[key] = thisNode
+  factors:        # 用于数组或非叶子节点, 其元素为生成子节点的动作.
+    - Action:     # 当节点具有多个属性时属于非叶子节点
+  precedence: 1   # 用于二元运算表达式表示运算优先级
+  flag: string    # 生成该节点的额外标记, 参见 [FLAG](#FLAG)
+  loc:            # 行列位置信息, 参见 [CRLF](#CRLF)
+    startLine: 1
+    startCol: 1
+    endLine: 2
+    endCol: 1
 ```
 
-该数组称作 Abstract Actions Tree: AAT. AAT 包含生成 AST 节点的信息:
+该结构非常接近 AST, 只是属性在 factors 里面.
 
-    start      是该动作匹配输入的开始偏移量.
-    end        是该动作匹配输入的结束偏移量(不包含 end).
-    raw        匹配并被保留的原始字符串, 未定义 action 的匹配字符串被抛弃.
-    factors    表示同级别分组, 与 raw 互斥. 参见 alone 方法以及运算符.
-    precedence 运算符优先级, 从 1 开始, 值越大优先级越高.
-    其它源自 action 的属性, 其中 extra 为数组, 依据节点关系 method 值会被更新.
+## methods
 
-事实上 AAT 的结构非常接近 AST, 只是未生成 type 表示的具体节点.
+本节详述可用的方法以及与 key, type 的可组合性.
 
-## ref
-
-引用规则名或插件名称.
-
-当只有 ref 时不产生动作, 否则依据 type, method, key 产生动作.
-
-## type
-
-通常表示 AST 节点的类型名称. 在某些方法中该值可定制.
-
-独立格式:
-
-    ref- 表示该对象向上返回
-
-## key
-
-赋值目标属性名称, 有些方法中, 省略该值表示 parent 是个数组.
-
-## extra
-
-额外的参数.
-
-比如当 method 被动作关系占用时可利用 extra 来指示 AST 节点关系.
-
-## method
-
-动作方法名, 约定的方法名用来指示动作间的关系用于生成 AAT,
-如果不需要指示动作关系时可自定义名称用来指示 AST 节点关系.
-
-简便起见, 下文按照自顶向下顺序对生成的动作进行如下命名:
-
-    source 动作对象, 通常由 ref 生成.
-    target 动作对象, 通常由上级规则生成.
-    node   AST 节点对象, source 对应的 AST 节点.
-    parent AST 节点对象, target 对应的 AST 节点.
-
-下面列举约定的方法名和隐含的动作及节点关系, 当然可以通过 extra 更改节点关系.
+所有方法中只有 lit, precedence 会保存匹配的原始字符串.
 
 ### lit
 
-当需要保存 ref 匹配的字符串时使用, 不能与 extra 组合使用.
+当需要保存匹配的原始字符串时使用. 参见 [千位分隔符数值](#Demos).
 
-    ref-lit--[type]     ---> target.raw  = source
-    ref-lit-key-[type]  ---> parent[key] = node
+    ref-lit        support stitching
+    ref-lit-key    support stitching
+    ref-lit--type  does not support stitching
 
-行为:
+### to
 
-    未使用 lit 的动作匹配的字符串被丢弃
-    组合 type 的 lit 动作不合并
-    未组合 type 且其它项相同的 lit 动作被合并
+可省略, 向目标属性直接赋值. 事实上 'to' 总是被替换为空字符串.
+
+    ref-to-key-[type] ---> ref--key-[type]
+
+### push
+
+目标属性为数组.
+
+    ref-push-[key]-[type]
 
 ### precedence
 
-当 ref 为二元运算符时使用. 运算符不能与 type 组合使用.
+用于二元运算符. 该方法保存匹配的原始字符串.
 
-    ref-precedence-key ---> parent[key] = node
+    ref-precedence-key
 
-ref 中使用纯字符串分组替代写法, 优先级由低到高排列, 启用贪婪匹配. 示例:
+ref 中的优先级由低到高排列, 使用纯字符串分组替代写法, 采用贪婪匹配. 示例:
 
 ```abnf
 BinaryExpr      = (
@@ -139,15 +127,15 @@ BinaryExpr      = (
                     operatorAlpha-precedence-operator 1*cwsp
                   ) *cwsp Expression
 
-operatorSymbol  = ("") /
-                  ("") /
+operatorSymbol  = "" /
+                  "" /
                   ("+" / "-") /
                   ("*" / "/")
 
-operatorAlpha   = ("or") /
-                  ("and") /
-                  ("") /
-                  ("")
+operatorAlpha   = "or" /
+                  "and" /
+                  "" /
+                  ""
 ```
 
 该例中运算符规则被分成两组, 实现字符串运算符右侧界限检查.
@@ -156,27 +144,27 @@ operatorAlpha   = ("or") /
 
 ### factors
 
-当 ref 生成独立的 source 时使用, source 的归属由上层确定.
+该方法产生 factors.
 
-    ref-alone ---> source.factors = []
+    ref-factors-[key]-[type]
 
 常用于数组, 参数列表等.
 
 ### alone
 
-基于 factors 当 factors.length == 1 时 source = factors[0].
+该方法产生 factors. 当 factors 内仅有一个动作时提升为当前动作.
+
+    ref-alone-[key]-[type]
 
 常用于分组表达式等.
 
 ### ahead
 
-当 ref 生成 target, 先前生成的首个非 mark 动作为 source 时使用.
+该方法产生 factors. 收纳先前动作到 factors, 并交换 key 和 type.
 
-该方法必须与 type 组合使用.
+    ref-ahead-[key]-[type]
 
-    ref-ahead-key- ---> target.key, source.key = source.key, target.key
-
-ahead 可用于一元后缀表达式. 示例: 该例中 Identifier- 不需要 key
+示例: 用于一元后缀表达式, 该例中 Identifier- 不需要 key
 
 ```abnf
 unaryExpr   = Number- / Identifier- [UpdateExpr-ahead-argument-]
@@ -184,62 +172,43 @@ UpdateExpr  = update-lit-operator
 update      = "++" / "--"
 ```
 
+注意: 对比 prefix 和 infix, ahead 不检查运算符和后续运算子.
+
 ### prefix
 
-当 ref 为一元前缀表达式, 后续生成的首个非 mark 动作为运算子时使用.
+该方法产生 factors. 用于一元前缀表达式. 前后都必须生成运算子动作.
 
-    ref-prefix-     ---> parent.push(node)
-    ref-prefix-key- ---> parent[key] = node
+    ref-prefix-[key]-type
+
+提示: 运算子必须具有 type
 
 ### infix
 
-当 ref 为二元中缀表达式, 后续生成的首个非 mark 动作为运算子时使用.
+该方法产生 factors. 用于二元中缀表达式. 前后都必须生成运算子动作.
+收纳先前动作到 factors, 并交换 key 和 type.
 
-    ref-infix-     ---> parent.push(node)
-    ref-infix-key- ---> parent[key] = node
+    ref-infix-[key]-type
 
-### inner
+### next
 
-当需要提取 ref 首个非 mark 动作时使用. 可配合 ahead, prefix, infix.
+不生成动作, 仅对后续生成的首个动作设置 key.
+可配合 ahead, prefix, infix 使用.
 
-    ref-inner-key ---> parent[key] = node
+    ref-next-key
 
-### mark
+### note
 
-该动作总是被保留, 配合 ahead, prefix, infix 用于排除非运算子.
+该动作用于注释, 配合 ahead, prefix, infix 可排除非运算子.
 
-    ref-mark-[key]-[type]-[extra]
+    ref-note-[key]-[type]
 
-典型的应用场景:
-
- - 注释
- - 版式相关
- - 给 AST 节点设置附加属性
- - 插件事件, 参见 Actions.
-
-### customize
-
-除了上述和生成动作密切相关的保留方法外, 使用者可自定义方法名.
-
-下面推荐几个用来表示节点关系方法名.
-
-#### to
-
-通用赋值.
-
-    ref-to-key- ---> parent[key] = node
-
-#### fetch
-
-该方法必须与 type 组合使用.
-
-    ref-fetch-key- ---> parent[node[key]] = node
+注意: 为了正确计算运算子, 非运算子必须使用该方法.
 
 # Actions
 
-Actions 依据 Rules 生成的规则和输入源生成 AAT.
+核心工具 Actions 依据规则匹配输入源生成 AAT.
 
-了解下述 AAT 生成步骤有助于正确使用 ABNFA 文法以及开发插件.
+了解下述生成步骤有助于正确使用 ABNFA 文法以及开发插件.
 
 初始:
 
@@ -297,13 +266,14 @@ function LoadOrExecutePlugin(n, self): bool {}
 生成事件, 通过调用 Actions 实例的 before 方法.
 
 ```js
-function before(key, extra){}
+function before(type, method, key){}
 ```
 
 参数:
 
-    key   字符串, 表示事件函数名称, 对应的 'ON_key' 插事件函数必须存在.
-    extra 数组, 事件节点的 extra 属性值
+    type   字符串, 表示事件函数名称, 插件函数 'ON_type' 必须存在.
+    method 字符串, 附加参数, 保存在 method 属性
+    key    字符串, 附加参数, 保存在 method 属性
 
 该函数返回布尔值 true 表示成功, false 表示失败.
 
@@ -319,10 +289,10 @@ function event(self, factors, index, node){}
 
 参数:
 
-1. self     该 Actions 实例
-1. factors  需要处理的动作数组
-3. index    该事件在 factors 中的下标, factors[index] 已被设置为 null
-4. node     该事件节点值 factors[index]
+    self     该 Actions 实例
+    factors  需要处理的动作数组
+    index    该事件在 factors 中的下标, factors[index] 已被设置为 null
+    node     该事件节点值 factors[index]
 
 返回:
 
@@ -339,11 +309,17 @@ function event(self, factors, index, node){}
 first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
 ```
 
+### FLAG
+
+向前一个具有 type 的动作的 flag 属性赋值.
+
+    FLAG-flag-[flag...] --> target.flag = flag
+
 ### EOF
 
 匹配输入源结尾.
 
-    ACTIONS-EOF
+    EOF
 
 提示:
 
@@ -354,27 +330,28 @@ first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
 
 在动作中记录行列位置. 该插件总是被首先执行.
 
-    ACTIONS-CRLF
+    CRLF
 
 行列位置都从 1 开始, 保存在动作属性 loc 中:
 
 ```yaml
-loc:
-  startLine: Int
-  startCol: Int
-  endLine: Int
-  endCol: Int
+Action:
+  loc:
+    startLine: 1
+    startCol: 1
+    endLine: 1
+    endCol: 2
 ```
 
-### EXISTS
+### OWN
 
-自 factors[index] 之检查后指定顺序 key 值的动作.
+要求自 factors[index] 之后的动作具有指定的属性名称.
 
-    EXISTS-key-[key...]
+    OWN-key-[key...]
 
 ### OUTDENT
 
-在代码块中进行缩进语法检查. 必须是 alone 方法内的首个动作.
+支持缩进语法, 允许连续空行. 必须是 alone 或 factors 方法内的首个动作.
 
     ACTIONS-OUTDENT-SP  行首缩进符为空格(%x20)
     ACTIONS-OUTDENT-TAB 行首缩进符为水平制表符(%x09)
@@ -392,8 +369,6 @@ loc:
     col >  startCol 规则 deny  测试失败继续, 否则判定失败.
     col == startCol 规则 allow 测试成功继续, 否则判定缩出.
 
-其中 NotBreak 是任意的字符串,
-
 示例: 省略了一些规则的写法
 
 ```abnf
@@ -401,10 +376,10 @@ first       = ACTIONS-OUTDENT statement
 
 statement   = IfStmt-alone- / Block-alone-
 
-IfStmt      = "if" OUTDENT-else-else EXISTS-test-consequent
+IfStmt      = "if" OUTDENT-else-else OWN-test-consequent
               "if" *cwsp "(" *cwsp Expression-alone-test *cwsp ")" *cwsp
               Block-alone-consequent- *cwsp
-              [else statement-inner-alternate]
+              [else statement-next-alternate]
 else        = "else" 1*cwsp
 
 Block       = OUTDENT-rightBracket "{" *cwsp statement *cwsp "}"
@@ -417,11 +392,10 @@ group        = OUTDENT-rightBracket "(" Expression ")"
 rightBracket = "}" / "]" / ")"
 ```
 
-提示: allow, deny 只是测试, 匹配会继续进行, 所以多种右括号可以写在测试中.
-
 ### DENY
 
-向前检查动作的 raw 属性, 并拒绝某些值.
+检查前一个动作的 raw 属性, 拒绝 ref 提供的字符串序列值.
+如果拒绝会导致解析失败.
 使用格式:
 
     DENY-ref
@@ -440,7 +414,7 @@ DIGIT      = %x30-39
 
 本节展示首个规则名表示目标对象, 向目标设置成员(属性或元素)的情况.
 
-样本 `0234 678` 是以空格分隔的两个数值, 期望结果为数值数组, ABNFA 定义:
+样本 `0234 678` 是以空格分隔的两个数值, 期望结果为数值数组.
 
 ```abnf
 Array     = 1*(Number- [SP])
@@ -449,7 +423,7 @@ DIGIT     = %x30-39
 SP        = %x20
 ```
 
-样本 `0,234 678` 增加了千位分隔符, ABNFA 定义:
+样本 `0,234 678` 增加了千位分隔符.
 
 ```abnf
 Array  = 1*(Number- [SP])
@@ -458,7 +432,7 @@ DIGIT  = %x30-39
 SP     = %x20
 ```
 
-样本 `-0,234 678` 增加了负号符号位, ABNFA 定义: Number 非结构体.
+样本 `-0,234 678` 增加了负号符号位, Number 非结构体.
 
 ```abnf
 Array  = 1*(Number- [SP])
@@ -468,7 +442,22 @@ DIGIT  = %x30-39
 SP     = %x20
 ```
 
-样本 `-+0,234 678` 增加了符号位运算, ABNFA 定义: Number 是结构体.
+输出:
+
+```yaml
+- start: 0
+  end: 6
+  raw: '-0234'
+  method: lit
+  type: Number
+- start: 7
+  end: 10
+  raw: '678'
+  method: lit
+  type: Number
+```
+
+样本 `+-0,234 678` 增加了符号位运算, Number 是结构体.
 
 ```abnf
 Array  = 1*(Number- [SP])
@@ -478,51 +467,121 @@ DIGIT  = %x30-39
 SP     = %x20
 ```
 
-# Examples
+输出:
 
-以四则运算表达式为例, 使用 Web IDL 描述该表达式的传统 AST 结构:
-
-```webidl
-enum UnaryOperator { "-" };
-
-enum BinaryOperator { "+", "-", "*", "/" };
-
-interface Expression : Node { };
-
-interface UnaryExpr : Expression {
-  attribute UnaryOperator operator;
-  attribute Expression operand;
-};
-
-interface BinaryExpr : Expression {
-  attribute BinaryOperator operator;
-  attribute Expression left;
-  attribute Expression right;
-};
-
-interface LiteralNumericExpression : Expression {
-  attribute integer value;
-};
+```yaml
+- start: 0
+  end: 7
+  type: Number
+  factors:
+    - start: 0
+      end: 2
+      raw: +-
+      method: lit
+      key: sign
+    - start: 2
+      end: 7
+      raw: '0234'
+      method: lit
+      key: raw
+- start: 8
+  end: 11
+  type: Number
+  factors:
+    - start: 8
+      end: 11
+      raw: '678'
+      method: lit
+      key: raw
 ```
 
-ABNFA 定义
+# Examples
+
+四则运算表达式: 支持千位分隔符数值
 
 ```abnf
-Expression   = ( group-alone /
-               UnaryExpr-prefix- /
-               NumericExpr- )
+Expression   = (NumericExpr- / UnaryExpr-prefix- / group-alone)
                [BinaryExpr-infix-left-]
 
 group        = "(" Expression ")"
-UnaryExpr    = minus-lit-operator Expression-inner-operand
-BinaryExpr   = operator-precedence-operator Expression-inner-right
+
+UnaryExpr    = minus-lit-operator Expression-next-operand
+               Expression-next-right
+
 NumericExpr  = 1*3DIGIT-lit *("," 3DIGIT-lit)
 minus        = "-"
 operator     = ("+" / "-") / ("*" / "/")
 DIGIT        = %x30-39
 ```
 
-注意: alone 在该例子中表达的是括号分组.
+样本 `-1-2*-3` 的输出:
+
+```yaml
+- start: 0
+  end: 7
+  type: BinaryExpr
+  method: infix
+  key: ''
+  factors:
+    - start: 0
+      end: 2
+      type: UnaryExpr
+      method: prefix
+      factors:
+        - start: 0
+          end: 1
+          raw: '-'
+          method: lit
+          key: operator
+        - start: 1
+          end: 2
+          raw: '1'
+          method: lit
+          type: NumericExpr
+          key: operand
+      key: left
+    - start: 2
+      end: 3
+      raw: '-'
+      method: precedence
+      key: operator
+      precedence: 1
+    - start: 3
+      end: 7
+      type: BinaryExpr
+      method: infix
+      key: right
+      factors:
+        - start: 3
+          end: 4
+          raw: '2'
+          method: lit
+          type: NumericExpr
+          key: left
+        - start: 4
+          end: 5
+          raw: '*'
+          method: precedence
+          key: operator
+          precedence: 2
+        - start: 5
+          end: 7
+          type: UnaryExpr
+          method: prefix
+          key: right
+          factors:
+            - start: 5
+              end: 6
+              raw: '-'
+              method: lit
+              key: operator
+            - start: 6
+              end: 7
+              raw: '3'
+              method: lit
+              type: NumericExpr
+              key: operand
+```
 
 # License
 
