@@ -101,9 +101,9 @@ In all methods, only lit and precedence will hold the matching raw string.
 Used when you need to save the matching raw string.
 See [Thousand Separator Values] (# Demos).
 
-    ref-lit        支持拼接
-    ref-lit-key    支持拼接
-    ref-lit--type  不支持拼接
+    ref-lit        Support stitching
+    ref-lit-key    Support stitching
+    ref-lit--type  Do not support stitching
 
 ### to
 
@@ -159,7 +159,8 @@ Commonly used in arrays, parameter lists and so on.
 
 ### alone
 
-The method produces factors. 当 factors 内仅有一个动作时提升为当前动作.
+The method produces factors.
+When the factors only one action to upgrade to the current action.
 
     ref-alone-[key]-[type]
 
@@ -188,7 +189,7 @@ The method produces factors. Used for Prefix Expression.
 
     ref-prefix-[key]-type
 
-提示: 运算子必须具有 type
+Tip: The operator must have type.
 
 ### infix
 
@@ -464,7 +465,7 @@ Output:
   type: Number
 ```
 
-The sample `+ -0,234 678` adds the sign bit operation. Number is the structure.
+The sample `+-0,234 678` adds the sign bit operation. Number is the structure.
 
 ```abnf
 Array  = 1*(Number- [SP])
