@@ -49,6 +49,14 @@ action:
 6. tail 存储 action.ref 之后的字符串
 7. 含 method 或 key 或 type 的动作产生动作对象
 
+完整结构为:
+
+    ref-method-key-type-more
+
+表示的语义:
+
+    ref 生成 type 对象, 以 method 方式赋给上级对象的 key 属性. more 为额外参数.
+
 等价简写格式: 以 '-' 结尾, 表示 type 和 ref 同名.
 
     ref-                   === ref---ref
@@ -74,8 +82,8 @@ Action:
                   #   note 注释节点
                   #   push 表示 parentNode[key].push(thisNode)
                   #   其它 表示 parentNode[key] = thisNode
-  factors:        # 用于数组或非叶子节点, 其元素为生成子节点的动作.
-    - Action:     # 当节点具有多个属性时属于非叶子节点
+  factors:        # 非叶子节点, 包含该节点的子节点(动作)
+    - Action:     #
   precedence: 1   # 用于二元运算表达式表示运算优先级
   flag: string    # 生成该节点的额外标记, 参见 [FLAG](#FLAG)
   loc:            # 行列位置信息, 参见 [CRLF](#CRLF)
@@ -103,15 +111,9 @@ Action:
 
 ### to
 
-可省略, 向目标属性直接赋值. 事实上 'to' 总是被替换为空字符串.
+可省略, 向节点的属性直接赋值. 事实上 'to' 总是被替换为空字符串.
 
     ref-to-key-[type] ---> ref--key-[type]
-
-### push
-
-目标属性为数组.
-
-    ref-push-[key]-[type]
 
 ### precedence
 
@@ -144,23 +146,31 @@ operatorAlpha   = "or" /
 
 ### factors
 
-该方法产生 factors.
+该方法先产生 factors, ref 可产生多个节点(动作).
 
     ref-factors-[key]-[type]
 
-常用于数组, 参数列表等.
+参见先产生 factors 对插件的影响.
 
 ### alone
 
-该方法产生 factors. 当 factors 内仅有一个动作时提升为当前动作.
+该方法先产生 factors, 且 ref 产生唯一节点(动作)作为当前节点(动作).
 
     ref-alone-[key]-[type]
 
-常用于分组表达式等.
+常用于分组表达式等. 参见先产生 factors 对插件的影响.
+
+### next
+
+该方法不生成节点(动作), ref 至少生成一个非 note 节点并重置首个动作开始偏移量.
+
+    ref-next-[key]
+
+可配合 ahead, prefix, infix 使用.
 
 ### ahead
 
-该方法产生 factors. 收纳先前动作到 factors, 并交换 key 和 type.
+该方法后产生 factors. 收纳先前动作到 factors, 并交换 key.
 
     ref-ahead-[key]-[type]
 
@@ -176,7 +186,7 @@ update      = "++" / "--"
 
 ### prefix
 
-该方法产生 factors. 用于一元前缀表达式. 前后都必须生成运算子动作.
+该方法产生 factors. 用于一元前缀表达式. 之前和内部必须生成运算子动作.
 
     ref-prefix-[key]-type
 
@@ -184,17 +194,10 @@ update      = "++" / "--"
 
 ### infix
 
-该方法产生 factors. 用于二元中缀表达式. 前后都必须生成运算子动作.
-收纳先前动作到 factors, 并交换 key 和 type.
+该方法产生 factors. 用于二元中缀表达式. 之前和内部必须生成运算子动作.
+收纳先前动作到 factors, 并交换 key.
 
     ref-infix-[key]-type
-
-### next
-
-不生成动作, 仅对后续生成的首个动作设置 key.
-可配合 ahead, prefix, infix 使用.
-
-    ref-next-key
 
 ### note
 
@@ -343,59 +346,96 @@ Action:
     endCol: 2
 ```
 
-### OWN
+### MUST
 
-要求自 factors[index] 之后的动作具有指定的属性名称.
+后续匹配必须成功, 拒绝回滚.
 
-    OWN-key-[key...]
+    MUST
 
 ### OUTDENT
 
-支持缩进语法, 允许连续空行. 必须是 alone 或 factors 方法内的首个动作.
+支持缩进语法, 缩进量必须一致, 允许连续空行. 自动加载 CRLF.
 
-    ACTIONS-OUTDENT-SP  行首缩进符为空格(%x20)
-    ACTIONS-OUTDENT-TAB 行首缩进符为水平制表符(%x09)
-    ACTIONS-OUTDENT     等价 ACTIONS-OUTDENT-TAB
+加载:
 
-该插件依赖 CRLF 插件, 如果 CRLF 未被加载将自动加载 CRLF.
+    ACTIONS-OUTDENT      行首缩进为 1 个水平制表符(%x09)
+    ACTIONS-OUTDENT-SP-n 行首缩进为 n 个空格(%x20), n <= 8, 缺省为 1
+    ACTIONS-OUTDENT-SP   行首缩进为 n 个空格(%x20), 自动计算, n <= 8
 
 使用格式:
 
-    OUTDENT-[allow]-[deny]
+必须位于 factors[0], alone 或 factors 方法可创建新的 factors.
 
-算法对比插件列开始位置(startCol)与后续行的列开始位置(col)的关系:
+    OUTDENT         相对行首, 后续行必须缩进
+    OUTDENT-aligned 相对行首, 后续行允许与第一行对齐
+    OUTDENT-        === OUTDENT-aligned
 
-    col <  startCol 判定缩出, 结束 alone.
-    col >  startCol 规则 deny  测试失败继续, 否则判定失败.
-    col == startCol 规则 allow 测试成功继续, 否则判定缩出.
+算法:
 
-示例: 省略了一些规则的写法
+执行 OUTDENT 后会计算当前行的缩进量 firstIndent, 在后续 CRLF 动作中进行缩出判定:
+
+    记下当前位置 failure
+    匹配 1*CRLF, 失败返回 false.
+    记下当前位置 successful
+    计算缩进量 indent 并按公式判定缩出:
+      indent < firstIndent || !aligned && indent == firstIndent
+    是缩出, 设置偏移量 failure, 返回 false
+    非缩出, 设置偏移量 successful + indent, 返回 true.
+
+以简化的 Python if-else 为例:
 
 ```abnf
-first       = ACTIONS-OUTDENT statement
+first      = ACTIONS-OUTDENT ACTIONS-DENY topStmts
+topStmts   = *CRLF statement *(CRLF statement) *CRLF
+stmts      = OUTDENT CRLF statement *(CRLF statement)
+statement  = if-next / expression
 
-statement   = IfStmt-alone- / Block-alone-
+if         = "if" 1*SP ifCell-factors--if
+ifCell     = OUTDENT- expression--test ":" *SP (
+              expression-factors-body /
+              stmts-factors-body ) [CRLF (else-next / elif-next)]
 
-IfStmt      = "if" OUTDENT-else-else OWN-test-consequent
-              "if" *cwsp "(" *cwsp Expression-alone-test *cwsp ")" *cwsp
-              Block-alone-consequent- *cwsp
-              [else statement-next-alternate]
-else        = "else" 1*cwsp
+elif       = "elif" 1*SP elseif-factors-orelse
 
-Block       = OUTDENT-rightBracket "{" *cwsp statement *cwsp "}"
+elseif     = ifCell-factors--if
 
-Expression  = ( NumericExpr- / UnaryExpr-prefix- / group-alone )
-              [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]
+else       = "else:" *SP (expression-factors-orelse / stmts-factors-orelse )
 
-group        = OUTDENT-rightBracket "(" Expression ")"
+ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
+keywords   = "class"/ "if" / "else" / "elif"
+Ident      = ALPHA *(ALPHA / DIGIT)
 
-rightBracket = "}" / "]" / ")"
+Num        = 1*DIGIT
+
+expression = (ident / Num-lit- / Set-factors- / List-factors- /
+              Dict-factors- / group-alone) *WSP
+
+elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression) [CRLF]
+group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
+
+List       = "[" [elements-factors-elts] "]"
+Set        = "{" [elements-factors-elts] "}"
+
+Dict       = "{" [pairs] "}"
+pair       = expression-alone-keys ":" *WSP expression-alone-values
+pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
+
+Call       = args-factors-args
+args       = "(" [elements] ")"
+
+WSP    = SP / HTAB
+CWSP   = WSP / CRLF
+HTAB   = %x09
+SP     = %x20
+ALPHA  = %x41-5A / %x61-7A
+DIGIT  = %x30-39
 ```
 
 ### DENY
 
 检查前一个动作的 raw 属性, 拒绝 ref 提供的字符串序列值.
 如果拒绝会导致解析失败.
+
 使用格式:
 
     DENY-ref

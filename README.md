@@ -112,12 +112,6 @@ In fact 'to' is always replaced by an empty string.
 
     ref-to-key-[type] ---> ref--key-[type]
 
-### push
-
-The target attribute is an array.
-
-    ref-push-[key]-[type]
-
 ### precedence
 
 Used for binary operators. This method holds the matching raw string.
@@ -155,16 +149,25 @@ The method produces factors.
 
     ref-factors-[key]-[type]
 
-Commonly used in arrays, parameter lists and so on.
+See the effect of generating factors on the plugin.
 
 ### alone
 
-The method produces factors.
-When the factors only one action to upgrade to the current action.
+The method produces factors. Generate a unique node (action) as the current node (action).
 
     ref-alone-[key]-[type]
 
 Commonly used in grouping expressions.
+
+See the effect of generating factors on the plugin.
+
+### next
+
+Does not generate an action, Generate at least one non-note node and reset the first action start offset.
+
+    ref-next-key
+
+Can be used with ahead, prefix, infix.
 
 ### ahead
 
@@ -197,13 +200,6 @@ The method produces factors. Used for Infix Expression.
 Hold the previous action to factors, and exchange key and type.
 
     ref-infix-[key]-type
-
-### next
-
-Does not generate an action, only set the key for subsequent actions.
-Can be used with ahead, prefix, infix.
-
-    ref-next-key
 
 ### note
 
@@ -347,11 +343,11 @@ Action:
     endCol: 2
 ```
 
-### OWN
+### MUST
 
-Requires a specified attribute name
+Subsequent matches must be successful and refuse to roll back.
 
-    OWN-key-[key...]
+    MUST
 
 ### OUTDENT
 
@@ -360,44 +356,76 @@ Must be the first action within the alone or factors method.
 
 Loding:
 
-    ACTIONS-OUTDENT-SP       Space indentation(%x20)
-    ACTIONS-OUTDENT-TAB      Tab indentation(%x09)
-    ACTIONS-OUTDENT     === ACTIONS-OUTDENT-TAB
+    ACTIONS-OUTDENT       Tab indentation(%x09)
+    ACTIONS-OUTDENT-SP-N  N Spaces indentation(%x20)
+    ACTIONS-OUTDENT-SP    Spaces indentation, Automatic calculation.
 
-The plug-in relies on the CRLF plug-in, which will automatically load the CRLF
- if the CRLF is not loaded.
+Must be in the factors [0], the alone or factors method can create new factors.
 
-    OUTDENT-[allow]-[deny]
+    OUTDENT            follow the line must be indented
+    OUTDENT-aligned    the subsequent line allows alignment with the first line
+    OUTDENT-       === OUTDENT-aligned
 
 Algorithm:
 
-    col <  startCol Determine the outdent.
-    col >  startCol The `deny` test failed to continue, otherwise the decision failed.
-    col == startCol The `allow` test success to continue , otherwise determine the outdent.
+After executing OUTDENT, the indentation of the current line is calculated firstIndent, and the indentation decision is made in the subsequent CRLF action:
 
-Example: Some rules are omitted
+    Write down the current position
+    Match 1 * CRLF, failed to return false.
+    Write down the current position
+    Calculate the indentation and determine the indentation by formula:
+      Indent <firstIndent ||! Aligned && indent == firstIndent
+    Is outdent, set the offset to failure, and return false
+    Un-outdent, set offset successful + indent, return true.
+
+Example: simplified Python if-else
 
 ```abnf
-first       = ACTIONS-OUTDENT statement
+first      = ACTIONS-OUTDENT ACTIONS-DENY topStmts
+topStmts   = *CRLF statement *(CRLF statement) *CRLF
+stmts      = OUTDENT CRLF statement *(CRLF statement)
+statement  = if-next / expression
 
-statement   = IfStmt-alone- / Block-alone-
+if         = "if" 1*SP ifCell-factors--if
+ifCell     = OUTDENT- expression--test ":" *SP (
+              expression-factors-body /
+              stmts-factors-body ) [CRLF (else-next / elif-next)]
 
-IfStmt      = "if" OUTDENT-else-else OWN-test-consequent
-              "if" *cwsp "(" *cwsp Expression-alone-test *cwsp ")" *cwsp
-              Block-alone-consequent- *cwsp
-              [else statement-next-alternate]
-else        = "else" 1*cwsp
+elif       = "elif" 1*SP elseif-factors-orelse
 
-Block       = OUTDENT-rightBracket "{" *cwsp statement *cwsp "}"
+elseif     = ifCell-factors--if
 
-Expression  = ( NumericExpr- / UnaryExpr-prefix- / group-alone )
-              [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]
+else       = "else:" *SP (expression-factors-orelse / stmts-factors-orelse )
 
-group        = OUTDENT-rightBracket "(" Expression ")"
+ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
+keywords   = "class"/ "if" / "else" / "elif"
+Ident      = ALPHA *(ALPHA / DIGIT)
 
-rightBracket = "}" / "]" / ")"
+Num        = 1*DIGIT
+
+expression = (ident / Num-lit- / Set-factors- / List-factors- /
+              Dict-factors- / group-alone) *WSP
+
+elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression) [CRLF]
+group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
+
+List       = "[" [elements-factors-elts] "]"
+Set        = "{" [elements-factors-elts] "}"
+
+Dict       = "{" [pairs] "}"
+pair       = expression-alone-keys ":" *WSP expression-alone-values
+pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
+
+Call       = args-factors-args
+args       = "(" [elements] ")"
+
+WSP    = SP / HTAB
+CWSP   = WSP / CRLF
+HTAB   = %x09
+SP     = %x20
+ALPHA  = %x41-5A / %x61-7A
+DIGIT  = %x30-39
 ```
-
 
 ### DENY
 
