@@ -111,9 +111,21 @@ Action:
 
 ### to
 
-可省略, 向节点的属性直接赋值. 事实上 'to' 总是被替换为空字符串.
+该方法不生成节点(动作), 重置 ref 首个节点开始偏移量以及 key.
 
-    ref-to-key-[type] ---> ref--key-[type]
+事实上工具链总是把 'to' 替换为空字符串
+
+    ref--key
+    ref-to-key
+
+### next
+
+该方法不生成节点(动作), 重置 ref 首个节点开始偏移量, 首个非 note 节点的 key.
+
+    ref-next
+    ref-next-key
+
+可配合 ahead, prefix, infix 使用.
 
 ### precedence
 
@@ -159,14 +171,6 @@ operatorAlpha   = "or" /
     ref-alone-[key]-[type]
 
 常用于分组表达式等. 参见先产生 factors 对插件的影响.
-
-### next
-
-该方法不生成节点(动作), ref 至少生成一个非 note 节点并重置首个动作开始偏移量.
-
-    ref-next-[key]
-
-可配合 ahead, prefix, infix 使用.
 
 ### ahead
 
@@ -314,9 +318,10 @@ first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
 
 ### FLAG
 
-向前一个具有 type 的动作的 flag 属性赋值.
+向当前 factors 中最后一个动作 last = factors[factors.length-1] 的 flag 属性赋值.
 
-    FLAG-flag-[flag...] --> target.flag = flag
+    FLAG        --> last.flag = "+",     表示 last 是某数组中的一个元素
+    FLAG-flags  --> last.flag = "flags", 额外标志
 
 ### EOF
 
@@ -385,21 +390,18 @@ Action:
 以简化的 Python if-else 为例:
 
 ```abnf
-first      = ACTIONS-OUTDENT ACTIONS-DENY topStmts
+first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
-stmts      = OUTDENT CRLF statement *(CRLF statement)
+stmts      = OUTDENT CRLF statement FLAG *(CRLF statement FLAG)
 statement  = if-next / expression
 
 if         = "if" 1*SP ifCell-factors--if
-ifCell     = OUTDENT- expression--test ":" *SP (
-              expression-factors-body /
-              stmts-factors-body ) [CRLF (else-next / elif-next)]
+ifCell     = OUTDENT- expression--test ":"
+              *SP (expression--body FLAG / stmts-factors-body)
+              [CRLF (else-next / elif-next)]
 
-elif       = "elif" 1*SP elseif-factors-orelse
-
-elseif     = ifCell-factors--if
-
-else       = "else:" *SP (expression-factors-orelse / stmts-factors-orelse )
+elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
+else       = "else:" *SP ( expression--orelse FLAG / stmts-factors-orelse )
 
 ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
 keywords   = "class"/ "if" / "else" / "elif"
@@ -409,15 +411,16 @@ Num        = 1*DIGIT
 
 expression = (ident / Num-lit- / Set-factors- / List-factors- /
               Dict-factors- / group-alone) *WSP
+elements   = OUTDENT- [CRLF] expression FLAG
+              *("," *WSP [CRLF] expression FLAG) [CRLF]
 
-elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
 List       = "[" [elements-factors-elts] "]"
 Set        = "{" [elements-factors-elts] "}"
 
 Dict       = "{" [pairs] "}"
-pair       = expression-alone-keys ":" *WSP expression-alone-values
+pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
 Call       = args-factors-args

@@ -107,10 +107,20 @@ See [Thousand Separator Values] (# Demos).
 
 ### to
 
-Can be omitted, to the target attribute directly assigned.
+Does not generate an action, Reset the first child node start offset and key.
 In fact 'to' is always replaced by an empty string.
 
-    ref-to-key-[type] ---> ref--key-[type]
+    ref--key
+    ref-to-key
+
+### next
+
+Does not generate an action, Reset the first child node start offset, and reset the first non-note node's key.
+
+    ref-next
+    ref-next-key
+
+Can be used with ahead, prefix, infix.
 
 ### precedence
 
@@ -160,14 +170,6 @@ The method produces factors. Generate a unique node (action) as the current node
 Commonly used in grouping expressions.
 
 See the effect of generating factors on the plugin.
-
-### next
-
-Does not generate an action, Generate at least one non-note node and reset the first action start offset.
-
-    ref-next-key
-
-Can be used with ahead, prefix, infix.
 
 ### ahead
 
@@ -316,9 +318,10 @@ first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
 
 ### FLAG
 
-Forward a flag attribute with a type action.
+Assigns the flag attribute to the last action last = factors [factors.length-1] in the current factors.
 
-    FLAG-flag-[flag...] --> previousAction.flag = flag
+    FLAG        --> last.flag = "+",   last is an element in an array
+    FLAG-flags  --> last.flag = flags, customize flags
 
 ### EOF
 
@@ -381,21 +384,18 @@ After executing OUTDENT, the indentation of the current line is calculated first
 Example: simplified Python if-else
 
 ```abnf
-first      = ACTIONS-OUTDENT ACTIONS-DENY topStmts
+first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
-stmts      = OUTDENT CRLF statement *(CRLF statement)
+stmts      = OUTDENT CRLF statement FLAG *(CRLF statement FLAG)
 statement  = if-next / expression
 
 if         = "if" 1*SP ifCell-factors--if
-ifCell     = OUTDENT- expression--test ":" *SP (
-              expression-factors-body /
-              stmts-factors-body ) [CRLF (else-next / elif-next)]
+ifCell     = OUTDENT- expression--test ":"
+              *SP (expression--body FLAG / stmts-factors-body)
+              [CRLF (else-next / elif-next)]
 
-elif       = "elif" 1*SP elseif-factors-orelse
-
-elseif     = ifCell-factors--if
-
-else       = "else:" *SP (expression-factors-orelse / stmts-factors-orelse )
+elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
+else       = "else:" *SP ( expression--orelse FLAG / stmts-factors-orelse )
 
 ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
 keywords   = "class"/ "if" / "else" / "elif"
@@ -405,15 +405,16 @@ Num        = 1*DIGIT
 
 expression = (ident / Num-lit- / Set-factors- / List-factors- /
               Dict-factors- / group-alone) *WSP
+elements   = OUTDENT- [CRLF] expression FLAG
+              *("," *WSP [CRLF] expression FLAG) [CRLF]
 
-elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
 List       = "[" [elements-factors-elts] "]"
 Set        = "{" [elements-factors-elts] "}"
 
 Dict       = "{" [pairs] "}"
-pair       = expression-alone-keys ":" *WSP expression-alone-values
+pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
 Call       = args-factors-args
