@@ -310,24 +310,18 @@ Here are the built-in plugins.
 
 ### ACTIONS
 
-Load a plugin. Example: Load 'EOF', 'CRLF'
+Load a plugin. Example: Load 'CRLF', 'FLAG'
 
 ```abnf
-first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
+first = ACTIONS-CRLF ACTIONS-FLAG real-grammar-rule
 ```
 
 ### FLAG
 
 Assigns the flag attribute to the last action last = factors [factors.length-1] in the current factors.
 
-    FLAG        --> last.flag = "+",   last is an element in an array
-    FLAG-flags  --> last.flag = flags, customize flags
-
-### EOF
-
-Matches the end of the input source.
-
-    EOF
+    FLAG        --> last.flag = "+",   the last.parentNode.key is an array
+    FLAG-flags  --> last.flag = flags, customize flags for last.type
 
 ### CRLF
 
@@ -386,39 +380,34 @@ Example: simplified Python if-else
 ```abnf
 first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
-stmts      = OUTDENT CRLF statement FLAG *(CRLF statement FLAG)
+stmts      = OUTDENT CRLF statement *(CRLF statement)
 statement  = if-next / expression
 
 if         = "if" 1*SP ifCell-factors--if
-ifCell     = OUTDENT- expression--test ":"
-              *SP (expression--body FLAG / stmts-factors-body)
-              [CRLF (else-next / elif-next)]
-
+ifCell     = OUTDENT- expression--test ":" *SP
+             (expression--body / stmts-factors-body) FLAG
+             [CRLF (else-next / elif-next)]
 elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
-else       = "else:" *SP ( expression--orelse FLAG / stmts-factors-orelse )
+else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
 
 ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
-
 Num        = 1*DIGIT
 
-expression = (ident / Num-lit- / Set-factors- / List-factors- /
-              Dict-factors- / group-alone) *WSP
-elements   = OUTDENT- [CRLF] expression FLAG
-              *("," *WSP [CRLF] expression FLAG) [CRLF]
-
+expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP
+elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
-List       = "[" [elements-factors-elts] "]"
-Set        = "{" [elements-factors-elts] "}"
+List       = "[" [elements-factors-elts FLAG] "]"
+Set        = "{" [elements-factors-elts FLAG] "}"
 
 Dict       = "{" [pairs] "}"
 pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
-Call       = args-factors-args
-args       = "(" [elements] ")"
+Call       = args-factors-args FLAG
+args       = "()" / "(" [elements] ")"
 
 WSP    = SP / HTAB
 CWSP   = WSP / CRLF

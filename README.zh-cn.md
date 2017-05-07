@@ -97,17 +97,37 @@ Action:
 
 ## methods
 
+方法用来描述如何生成动作, 以及动作间的关系.
+
 本节详述可用的方法以及与 key, type 的可组合性.
 
-所有方法中只有 lit, precedence 会保存匹配的原始字符串.
+所有方法中 lit, leaf, note, precedence 具有保存匹配的原始字符串能力.
 
 ### lit
 
-当需要保存匹配的原始字符串时使用. 参见 [千位分隔符数值](#Demos).
+当需要保存匹配的原始字符串时使用. 支持空字符串.
 
-    ref-lit        support stitching
-    ref-lit-key    support stitching
-    ref-lit--type  does not support stitching
+    ref-lit        支持拼接
+    ref-lit-key    支持拼接
+    ref-lit--type  不支持拼接
+
+参见 [千位分隔符数值](#Demos).
+
+### leaf
+
+该方法的 ref 规则最多生成一个 lit 动作.
+
+    ref-leaf-[key]-[type]
+
+### note
+
+该方法专用于注释. 与 leaf 行为一致.
+
+    ref-note
+    ref-note-key
+    ref-note-key-type
+
+为了正确计算运算子, 必须使用该方法配合 ahead, prefix, infix 排除非运算子.
 
 ### to
 
@@ -162,7 +182,7 @@ operatorAlpha   = "or" /
 
     ref-factors-[key]-[type]
 
-参见先产生 factors 对插件的影响.
+参见 [缩出插件](#OUTDENT).
 
 ### alone
 
@@ -170,7 +190,9 @@ operatorAlpha   = "or" /
 
     ref-alone-[key]-[type]
 
-常用于分组表达式等. 参见先产生 factors 对插件的影响.
+常用于分组表达式等.
+
+参见 [缩出插件](#OUTDENT).
 
 ### ahead
 
@@ -202,14 +224,6 @@ update      = "++" / "--"
 收纳先前动作到 factors, 并交换 key.
 
     ref-infix-[key]-type
-
-### note
-
-该动作用于注释, 配合 ahead, prefix, infix 可排除非运算子.
-
-    ref-note-[key]-[type]
-
-注意: 为了正确计算运算子, 非运算子必须使用该方法.
 
 # Actions
 
@@ -310,29 +324,18 @@ function event(self, factors, index, node){}
 
 ### ACTIONS
 
-加载一个插件. 示例: 加载 'EOF', 'CRLF' 两个插件
+加载一个插件. 示例: 加载 CRLF', 'FLAG' 两个插件
 
 ```abnf
-first = ACTIONS-CRLF ACTIONS-EOF real-grammar-rule
+first = ACTIONS-CRLF ACTIONS-FLAG real-grammar-rule
 ```
 
 ### FLAG
 
 向当前 factors 中最后一个动作 last = factors[factors.length-1] 的 flag 属性赋值.
 
-    FLAG        --> last.flag = "+",     表示 last 是某数组中的一个元素
-    FLAG-flags  --> last.flag = "flags", 额外标志
-
-### EOF
-
-匹配输入源结尾.
-
-    EOF
-
-提示:
-
-    如果输入源必须全部被匹配时应该使用 EOF 插件.
-    否则前部被匹配也会成功.
+    FLAG        --> last.flag = "+",     表示 last.parentNode.key 是个数组
+    FLAG-flags  --> last.flag = "flags", 表示 last.type 额外标记
 
 ### CRLF
 
@@ -392,39 +395,34 @@ Action:
 ```abnf
 first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
-stmts      = OUTDENT CRLF statement FLAG *(CRLF statement FLAG)
+stmts      = OUTDENT CRLF statement *(CRLF statement)
 statement  = if-next / expression
 
 if         = "if" 1*SP ifCell-factors--if
-ifCell     = OUTDENT- expression--test ":"
-              *SP (expression--body FLAG / stmts-factors-body)
-              [CRLF (else-next / elif-next)]
-
+ifCell     = OUTDENT- expression--test ":" *SP
+             (expression--body / stmts-factors-body) FLAG
+             [CRLF (else-next / elif-next)]
 elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
-else       = "else:" *SP ( expression--orelse FLAG / stmts-factors-orelse )
+else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
 
 ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
-
 Num        = 1*DIGIT
 
-expression = (ident / Num-lit- / Set-factors- / List-factors- /
-              Dict-factors- / group-alone) *WSP
-elements   = OUTDENT- [CRLF] expression FLAG
-              *("," *WSP [CRLF] expression FLAG) [CRLF]
-
+expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP
+elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
-List       = "[" [elements-factors-elts] "]"
-Set        = "{" [elements-factors-elts] "}"
+List       = "[" [elements-factors-elts FLAG] "]"
+Set        = "{" [elements-factors-elts FLAG] "}"
 
 Dict       = "{" [pairs] "}"
 pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
-Call       = args-factors-args
-args       = "(" [elements] ")"
+Call       = args-factors-args FLAG
+args       = "()" / "(" [elements] ")"
 
 WSP    = SP / HTAB
 CWSP   = WSP / CRLF

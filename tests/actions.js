@@ -175,6 +175,30 @@ var grammarThousands = [
 		],
 	];
 
+test('lit note leaf', function(t) {
+	var product, actual,
+		src = '123ABCefg456\n',
+		expected = 'Number"123",!"ABC","efg",Number"456",Note""',
+		grammarNote = [
+			'first  = Number- note-note raw-customize Number- Note-leaf-',
+			'raw    = 1*alpha-lit',
+			'Note   = empty-lit %x0A',
+			'empty  = *alpha',
+			'note   = 1*ALPHA-lit',
+			'Number = 1*DIGIT-lit',
+			'ALPHA  = %x41-5A',
+			'alpha  = %x61-7A',
+			'DIGIT   = %x30-39',
+		].join('\n'),
+		actions = core.tokenize(grammarNote, core.Entries, core.Rules, core.Actions);
+
+	t.errify(actions)
+	product = actions.parse(src);
+	t.errify(product)
+	actual = ASON.serialize(product)
+	t.equal(actual, expected, expected, [actual, product]);
+})
+
 test('actions property', function(t) {
 	[
 		[

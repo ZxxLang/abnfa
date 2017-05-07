@@ -16,7 +16,7 @@ var test = require('./test'),
 		'DIGIT  = %x30-39',
 	].join('\n'),
 	grammarCRLF = [
-		'first  = ACTIONS-EOF ACTIONS-CRLF 1*(*CWSP i-lit-) EOF',
+		'first  = ACTIONS-CRLF 1*(*CWSP i-lit-)',
 		'i      = "i"/"h"',
 		common,
 	].join('\n'),
@@ -29,36 +29,34 @@ var test = require('./test'),
 	grammarPythonIndent = [
 		'first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts',
 		'topStmts   = *CRLF statement *(CRLF statement) *CRLF',
-		'stmts      = OUTDENT CRLF statement FLAG *(CRLF statement FLAG)',
+		'stmts      = OUTDENT CRLF statement *(CRLF statement)',
 		'statement  = if-next / expression',
 		'if         = "if" 1*SP ifCell-factors--if',
-		'ifCell     = OUTDENT- expression--test ":" *SP (',
-		'           	expression--body FLAG /',
-		'             	stmts-factors-body)',
-		'			  [CRLF (else-next / elif-next)]',
+		'ifCell     = OUTDENT- expression--test ":" *SP',
+		'             (expression--body /stmts-factors-body) FLAG',
+		'             [CRLF (else-next / elif-next)]',
 		'elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG',
-		'else       = "else:" *SP (',
-		'           	expression--orelse FLAG /',
-		'               stmts-factors-orelse )',
+		'else       = "else:" *SP',
+		'             (expression--orelse / stmts-factors-orelse) FLAG',
 		'ident      = Ident-lit- DENY-keywords [Call-ahead-func-]',
 		'keywords   = "class"/ "if" / "else" / "elif"',
 		'Ident      = ALPHA *(ALPHA / DIGIT)',
 		'Num        = 1*DIGIT',
 		'expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP',
-		'elements   = OUTDENT- [CRLF] expression FLAG *("," *WSP [CRLF] expression FLAG) [CRLF]',
+		'elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]',
 		'group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"',
-		'List       = "[" [elements-factors-elts] "]"',
-		'Set        = "{" [elements-factors-elts] "}"',
+		'List       = "[" [elements-factors-elts FLAG] "]"',
+		'Set        = "{" [elements-factors-elts FLAG] "}"',
 		'Dict       = "{" [pairs] "}"',
 		'pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG',
 		'pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]',
-		'Call       = args-factors-args ',
-		'args       = "(" [elements] ")"',
+		'Call       = args-factors-args FLAG',
+		'args       = "()" / "(" [elements] ")"',
 
 		common,
 	].join('\n');
 
-test('crlf and eof', function(t) {
+test('crlf', function(t) {
 	var actions = core.tokenize(grammarCRLF, core.Entries, core.Rules, core.Actions);
 
 	t.errify(actions);
@@ -119,56 +117,56 @@ test('python indent', function(t) {
 	t.errify(actions);
 	[
 		['i', 'Ident"i"'],
-		['do()', 'Call[Ident~func"do",~args[]]'],
+		['do()', 'Call[Ident~func"do",+args[]]'],
 		['i\nx', 'Ident"i",Ident"x"'],
 		['\ni', 'Ident"i"'],
 		['\ni\nx', 'Ident"i",Ident"x"'],
 		['i\nx', 'Ident"i",Ident"x"'],
-		['{i,1}', 'Set[~elts[+Ident"i",+Num"1"]]'],
-		['{a:1,b:2}', 'Dict[+Ident~keys"a",+Num~values"1",+Ident~keys"b",+Num~values"2"]'],
+		['{i,1}', 'Set[+elts[Ident"i",Num"1"]]'],
+		['{a:1,b:2}', 'Dict[Ident+keys"a",Num+values"1",Ident+keys"b",Num+values"2"]'],
 		['if t:\ndo', ''],
-		['if t:do    ', 'if[Ident~test"t",+Ident~body"do"]'],
-		['if t:\n\tdo', 'if[Ident~test"t",~body[+Ident"do"]]'],
-		['if [t]:\n\tdo', 'if[List~test[~elts[+Ident"t"]],~body[+Ident"do"]]'],
-		['if (t):\n\ti\n\tx', 'if[Ident~test"t",~body[+Ident"i",+Ident"x"]]'],
-		['if (t): {i}', 'if[Ident~test"t",+Set~body[~elts[+Ident"i"]]]'],
-		['if (t): {\n\ti\n}', 'if[Ident~test"t",+Set~body[~elts[+Ident"i"]]]'],
-		['if (t):[i]\n', 'if[Ident~test"t",+List~body[~elts[+Ident"i"]]]'],
-		['if (t):[i,x]', 'if[Ident~test"t",+List~body[~elts[+Ident"i",+Ident"x"]]]'],
+		['if t:do    ', 'if[Ident~test"t",Ident+body"do"]'],
+		['if t:\n\tdo', 'if[Ident~test"t",+body[Ident"do"]]'],
+		['if [t]:\n\tdo', 'if[List~test[+elts[Ident"t"]],+body[Ident"do"]]'],
+		['if (t):\n\ti\n\tx', 'if[Ident~test"t",+body[Ident"i",Ident"x"]]'],
+		['if (t): {i}', 'if[Ident~test"t",Set+body[+elts[Ident"i"]]]'],
+		['if (t): {\n\ti\n}', 'if[Ident~test"t",Set+body[+elts[Ident"i"]]]'],
+		['if (t):[i]\n', 'if[Ident~test"t",List+body[+elts[Ident"i"]]]'],
+		['if (t):[i,x]', 'if[Ident~test"t",List+body[+elts[Ident"i",Ident"x"]]]'],
 
 		['if t:do \nelse:\ni', ''],
 		['if t:do \nelse:i\n',
-			'if[Ident~test"t",+Ident~body"do",+Ident~orelse"i"]'
+			'if[Ident~test"t",Ident+body"do",Ident+orelse"i"]'
 		],
 
 		['if t:do \nelse:\n\ti\n\tx ',
-			'if[Ident~test"t",+Ident~body"do",~orelse[+Ident"i",+Ident"x"]]'
+			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]'
 		],
 		['if t:do \nelse:\n\t\ti\n\t\tx',
-			'if[Ident~test"t",+Ident~body"do",~orelse[+Ident"i",+Ident"x"]]'
+			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]'
 		],
 
 		['if t:do \nelse:\n\ti\n\tx\ndo()',
-			'if[Ident~test"t",+Ident~body"do",~orelse[+Ident"i",+Ident"x"]]' +
-			',Call[Ident~func"do",~args[]]'
+			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
+			',Call[Ident~func"do",+args[]]'
 		],
 
 		['if t: do\nelif x:do',
-			'if[Ident~test"t",+Ident~body"do",' +
-			'+if~orelse[Ident~test"x",+Ident~body"do"]' +
+			'if[Ident~test"t",Ident+body"do",' +
+			'if+orelse[Ident~test"x",Ident+body"do"]' +
 			']'
 		],
 		['if t:do \nelif t: do\nelse:\n\ti\n\tx\ndo()',
-			'if[Ident~test"t",+Ident~body"do",' +
-			'+if~orelse[Ident~test"t",+Ident~body"do",~orelse[+Ident"i",+Ident"x"]]' +
+			'if[Ident~test"t",Ident+body"do",' +
+			'if+orelse[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
 			']' +
-			',Call[Ident~func"do",~args[]]'
+			',Call[Ident~func"do",+args[]]'
 		],
 		['if t:\n\tif t: do\n\telse:\n\t\ti\n\t\tx\ndo(x)',
-			'if[Ident~test"t",~body[' +
-			'+if[Ident~test"t",+Ident~body"do",~orelse[+Ident"i",+Ident"x"]]' +
+			'if[Ident~test"t",+body[' +
+			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
 			']]' +
-			',Call[Ident~func"do",~args[+Ident"x"]]'
+			',Call[Ident~func"do",+args[Ident"x"]]'
 		],
 
 	].forEach(function(a, i) {
@@ -181,7 +179,7 @@ test('python indent', function(t) {
 			return Array.isArray(product) &&
 				t.fail('want error', [src, ASON.serialize(product)]) ||
 				t.pass('got error')
-		t.errify(product, src)
+		t.errify(product, [src,actions.factors])
 		actual = ASON.serialize(product)
 		t.equal(actual, expected, expected, [actual, src, product]);
 	});

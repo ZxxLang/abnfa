@@ -2,14 +2,14 @@ var tap = require('tap');
 var yaml = require('js-yaml');
 
 tap.pass('wrap t.end() and dump');
-tap.Test.prototype.addAssert('errify', 1, function(err, message) {
+tap.Test.prototype.errify = function(err, extra) {
 	if (err instanceof Error) {
-		this.fail(err.message,
-			Array.isArray(message) && message || [message]
-		)
+		this.ifErr(err, '',
+			Array.isArray(extra) && extra || [extra])
+		this.end()
 		throw err
 	}
-})
+}
 
 tap.Test.prototype.dump = function() {
 	this.push(' \n')
