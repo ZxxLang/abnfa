@@ -95,6 +95,18 @@ Action:
 
 该结构非常接近 AST, 只是属性在 factors 里面.
 
+## ref
+
+需要引用并匹配的规则
+
+## type
+
+该 ref 匹配成功生成的动作的 type 值
+
+## key
+
+该 ref 匹配成功生成的动作赋值到上级节点的 key 属性
+
 ## methods
 
 方法用来描述如何生成动作, 以及动作间的关系.
@@ -108,7 +120,7 @@ Action:
 当需要保存匹配的原始字符串时使用. 支持空字符串.
 
     ref-lit        支持拼接
-    ref-lit-key    支持拼接
+    ref-lit-key    支持多 key 属性, 且拼接相同的 key
     ref-lit--type  不支持拼接
 
 参见 [千位分隔符数值](#Demos).
@@ -123,15 +135,13 @@ Action:
 
 该方法专用于注释. 与 leaf 行为一致.
 
-    ref-note
-    ref-note-key
-    ref-note-key-type
+    ref-note-[key]-[type]
 
 为了正确计算运算子, 必须使用该方法配合 ahead, prefix, infix 排除非运算子.
 
 ### to
 
-该方法不生成节点(动作), 重置 ref 首个节点开始偏移量以及 key.
+该方法不生成节点(动作), 重置 ref 首个节点的 key.
 
 事实上工具链总是把 'to' 替换为空字符串
 
@@ -140,10 +150,10 @@ Action:
 
 ### next
 
-该方法不生成节点(动作), 重置 ref 首个节点开始偏移量, 首个非 note 节点的 key.
+该方法不生成节点(动作), 重置 ref 首个非 note 节点开始偏移量或 key.
 
-    ref-next
-    ref-next-key
+    ref-next      仅重置开始偏移量
+    ref-next-key  仅重置 key
 
 可配合 ahead, prefix, infix 使用.
 
@@ -198,7 +208,7 @@ operatorAlpha   = "or" /
 
 该方法后产生 factors. 收纳先前动作到 factors, 并交换 key.
 
-    ref-ahead-[key]-[type]
+    ref-ahead-key-type
 
 示例: 用于一元后缀表达式, 该例中 Identifier- 不需要 key
 

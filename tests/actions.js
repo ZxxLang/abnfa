@@ -113,55 +113,50 @@ var grammarThousands = [
 		['i and k or l', '[[iandk]orl]'],
 		['i.i(j+2,k)+i and k or l', '[[[[[ii][[j+2]k]]+i]andk]orl]'],
 	],
-	grammarSubject = [
-		'first        = ACTIONS-CRLF Expression',
-		'Expression   = ( NumericExpr- /',
-		'               UnaryExpr-prefix- /',
-		'               group-alone /',
-		'               subject)',
-		'               [UpdateExpr-ahead-operand- / BinaryExpr-infix-left- ]',
+	grammarSupplyChain = [
+		'first        = ACTIONS-OUTDENT ACTIONS-MUST ACTIONS-FLAG grammar',
+		'grammar      = OUTDENT Expression',
+		'Expression   = ( Numeric-leaf- /',
+		'               Unary-prefix- /',
+		'               group-next /',
+		'               supply)',
+		'               [Update-ahead-operand- / Binary-infix-left- ]',
 
-		'expressions  = Expression-alone *("," Expression-alone)',
+		'expressions  = OUTDENT Expression *(*SP "," WSP Expression)',
 
-		'subject      = Ident- [Subject-ahead-]',
-		'Subject      = *(DotExpr- / ListExpr-factors- / CallExpr-factors-)',
-		'DotExpr      = "." Ident',
-		'ListExpr     = "[" [expressions] "]"',
-		'CallExpr     = "(" [expressions] ")"',
-		'group        = "(" Expression ")"',
-		'UpdateExpr   = suffix-lit-operator',
-		'UnaryExpr    = prefix-lit-operator Expression--operand',
-		'BinaryExpr   = ( infix-precedence-operator /',
-		'               SP infixSymbol-precedence-operator SP)',
+		'Ident        = 1*ALPHA-lit',
+
+		'supply       = Ident- [Chain-ahead-first-]',
+		'Chain        = 1*(chain-next-chains FLAG)',
+		'chain        = "." Dot-factors- / list-next / call-next',
+		'Dot          = OUTDENT MUST WSP Ident--operand-',
+		'list         = "[" List-factors-',
+		'List         = OUTDENT MUST WSP expressions-factors-elts FLAG WSP [","] WSP "]"',
+		'call         = "(" Call-factors-',
+		'Call         = OUTDENT MUST WSP [expressions-factors-args FLAG] WSP ")"',
+
+		'group        = "(" groupExpr-alone',
+		'groupExpr    = OUTDENT MUST WSP Expression WSP ")"',
+
+		'Update       = suffix-lit-operator',
+		'Unary        = prefix-lit-operator Expression--operand',
+		'Binary       = ( *SP infix-precedence-operator WSP /',
+		'               1*SP infixSymbol-precedence-operator CWSP)',
 		'               Expression--right',
-		'NumericExpr  = 1*DIGIT-lit',
+		'Numeric      = 1*DIGIT',
 
 		'prefix       = "--" / "++" / "-"',
 		'suffix       = "--" / "++"',
 		'infix        = ("") / ("") / ("+" / "-") / ("*" / "/")',
 		'infixSymbol  = ("or") / ("and")',
 
-		'Ident        = 1*ALPHA-lit',
 		'SP           = %x20',
+		'HTAB         = %x09',
+		'WSP          = *SP [CRLF]',
+		'CWSP         = 1*SP [CRLF] / CRLF',
 		'ALPHA        = %x41-5A / %x61-7A',
 		'DIGIT        = %x30-39',
 	].join('\n'),
-	subjects = [
-		['i', 'i'],
-		['i.j', '[ij]'],
-		['i.j.k', '[ijk]'],
-		['i.j.k.l', '[ijkl]'],
-		['i[j]', '[i[j]]'],
-		['i()', '[i[]]'],
-		['i.j()', '[ij[]]'],
-		['i.j(1)', '[ij[1]]'],
-		['i(j+2)', '[i[[j+2]]]'],
-		['i(j+2,k)', '[i[[j+2]k]]'],
-		['i.i(j+2,k)', '[ii[[j+2]k]]'],
-		['i.j()+k*l', '[[ij[]]+[k*l]]'],
-		['k*l+i.j()', '[[k*l]+[ij[]]]'],
-		['i.i(j+2,k)[3]', '[ii[[j+2]k][3]]'],
-	],
 	grammarObject = '\n\
 		first   = Number- / Object-factors-\n\
 		Object  = "{" [Pair- *("," Pair-)] "}"\n\
@@ -178,9 +173,9 @@ var grammarThousands = [
 test('lit note leaf', function(t) {
 	var product, actual,
 		src = '123ABCefg456\n',
-		expected = 'Number"123",!"ABC","efg",Number"456",Note""',
+		expected = 'Number--"123",!"ABC","efg",Number"456",_Note~0""',
 		grammarNote = [
-			'first  = Number- note-note raw-customize Number- Note-leaf-',
+			'first  = ACTIONS-FLAG Number- FLAG-- note-note raw-customize Number- Note-leaf-0-_Note',
 			'raw    = 1*alpha-lit',
 			'Note   = empty-lit %x0A',
 			'empty  = *alpha',
@@ -194,7 +189,7 @@ test('lit note leaf', function(t) {
 
 	t.errify(actions)
 	product = actions.parse(src);
-	t.errify(product)
+	t.errify(product, [actions.factors])
 	actual = ASON.serialize(product)
 	t.equal(actual, expected, expected, [actual, product]);
 })
@@ -234,7 +229,7 @@ test('actions property', function(t) {
 			actions = new core.Actions(src),
 			product = core.tokenize(abnf, core.Entries, core.Rules, actions);
 
-		t.errify(product, message)
+		t.errify(product, [message, actions.factors])
 		actual = ASON.serialize(product)
 		t.equal(actual, expected, message, [src, expected, actual, product]);
 	});
@@ -253,7 +248,7 @@ test('actions arithmetic', function(t) {
 			actual = [],
 			product = actions.parse(src);
 
-		t.errify(product, src)
+		t.errify(product, [src, actions.factors])
 
 		product.forEach(group, actual)
 		actual = actual.join('')
@@ -274,7 +269,7 @@ test('actions expression', function(t) {
 			actual = [],
 			product = actions.parse(src);
 
-		t.errify(product, src)
+		t.errify(product, [src, actions.factors])
 
 		product.forEach(group, actual)
 		actual = actual.join('')
@@ -282,26 +277,74 @@ test('actions expression', function(t) {
 	})
 });
 
-test('actions subject', function(t) {
-	t.pass('Unfulfilled')
-	return
+test('supply chain', function(t) {
+	var chain = function() {
+			return 'Chain[Ident~first"i",' +
+				Array.prototype.join.call(arguments, ',') + ']'
+		},
+		j2 = 'Binary[Ident~left"j",~operator"+",Numeric~right"2"]',
+		// i.i(j and 1+2 ,k or l)[3]
+		last = chain(
+			'Dot+chains[Ident~operand"i"]',
+			'Call+chains[+args['+
+			'Binary[Ident~left"j",~operator"and",'+
+			'Binary~right[Numeric~left"1",~operator"+",Numeric~right"2"]],'+
+			'Binary[Ident~left"k",~operator"or",Ident~right"l"]'+
+			']]',
+			'List+chains[+elts[Numeric"3"]]'
+		);
+
 	var actions,
-		rules = core.tokenize(grammarSubject, core.Entries, core.Rules);
+		rules = core.tokenize(grammarSupplyChain, core.Entries, core.Rules);
 
 	t.errify(rules);
 	actions = new core.Actions(rules);
 
-	subjects.forEach(function(a) {
+	[
+		['i', 'Ident"i"'],
+		['i.j', chain('Dot+chains[Ident~operand"j"]')],
+		['i.j.k', chain(
+			'Dot+chains[Ident~operand"j"]',
+			'Dot+chains[Ident~operand"k"]'
+		)],
+		['i.j.k.l', chain(
+			'Dot+chains[Ident~operand"j"]',
+			'Dot+chains[Ident~operand"k"]',
+			'Dot+chains[Ident~operand"l"]'
+		)],
+		['i[j]', chain('List+chains[+elts[Ident"j"]]')],
+		['i()', chain('Call+chains[]')],
+		['i.j()', chain('Dot+chains[Ident~operand"j"]', 'Call+chains[]')],
+		['i.j(1)', chain(
+			'Dot+chains[Ident~operand"j"]',
+			'Call+chains[+args[Numeric"1"]]'
+		)],
+		['i(j+2)', chain('Call+chains[+args[' + j2 + ']]')],
+		['i(j+2,k)', chain('Call+chains[+args[' + j2 + ',Ident"k"]]')],
+		['i.i(j+2,k)', chain(
+			'Dot+chains[Ident~operand"i"]',
+			'Call+chains[+args[' + j2 + ',Ident"k"]]')],
+		['i.j()+k*l', 'Binary[' +
+			'Chain~left[Ident~first"i",Dot+chains[Ident~operand"j"],Call+chains[]],' +
+			'~operator"+",' +
+			'Binary~right[Ident~left"k",~operator"*",Ident~right"l"]]'
+		],
+		['k*l+i.j()', 'Binary[' +
+			'Binary~left[Ident~left"k",~operator"*",Ident~right"l"],' +
+			'~operator"+",' +
+			'Chain~right[Ident~first"i",Dot+chains[Ident~operand"j"],Call+chains[]]]'
+		],
+		['i.i(j and 1+2,k or l)[3]', last],
+		['i.\n\ti(\n\tj and\n\t1 + \n\t2 ,\n\tk or l\n\t)[\n\t3,]', last],
+	].forEach(function(a) {
 		var src = a[0],
 			expected = a[1],
 			actual = [],
 			product = actions.parse(src);
 
-		t.errify(product, src)
-
-		product.forEach(group, actual)
-		actual = actual.join('')
-		t.equal(actual, expected, 'subject', [src, expected, actual, product]);
+		t.errify(product, [src, actions.factors])
+		actual = ASON.serialize(product)
+		t.equal(actual, expected, expected, [actual, src, product]);
 	})
 });
 
@@ -318,7 +361,7 @@ test('object', function(t) {
 			actual,
 			product = actions.parse(src);
 
-		t.errify(product, src)
+		t.errify(product, [src, actions.factors])
 		actual = ASON.serialize(product)
 		t.equal(actual, expected, expected, [actual, src, product]);
 	})
