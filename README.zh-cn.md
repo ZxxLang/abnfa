@@ -75,7 +75,7 @@ AAT 元素为动作对象, 包含生成 AST 节点的信息.
 Action:
   start: 0        # 该动作匹配输入的开始偏移量.
   end: 1          # 该动作匹配输入的结束偏移量(不包含 end)
-  type: string    # AST 节点的类型名称
+  type: string    # ref 生成的 AST 节点类型名称
   key: string     # 该节点在父节点的属性名
   raw: string     # 用于叶子节点, 保留匹配的原始字符串.
   method: string  # 表示如何赋值到父节点, 分为三类
@@ -95,45 +95,36 @@ Action:
 
 该结构非常接近 AST, 只是属性在 factors 里面.
 
-## ref
-
-需要引用并匹配的规则
-
-## type
-
-该 ref 匹配成功生成的动作的 type 值
-
-## key
-
-该 ref 匹配成功生成的动作赋值到上级节点的 key 属性
-
 ## methods
 
 方法用来描述如何生成动作, 以及动作间的关系.
 
 本节详述可用的方法以及与 key, type 的可组合性.
 
-所有方法中 lit, leaf, note, precedence 具有保存匹配的原始字符串能力.
+所有方法中 lit, leaf, note, precedence 具有提取匹配的原始字符串能力.
+被提取的字符串仅保存在叶子节点的 raw 属性中.
 
 ### lit
 
-当需要保存匹配的原始字符串时使用. 支持空字符串.
+该方法提取匹配的原始字符串. 支持空字符串.
 
     ref-lit        支持拼接
     ref-lit-key    支持多 key 属性, 且拼接相同的 key
-    ref-lit--type  不支持拼接
+    ref-lit--type  不支持拼接, 等价 ref-leaf--type
 
 参见 [千位分隔符数值](#Demos).
 
 ### leaf
 
-该方法的 ref 规则最多生成一个 lit 动作.
+该方法提取匹配的原始字符串, 并生成节点. 支持空字符串.
 
     ref-leaf-[key]-[type]
 
+在 leaf 之下不能再含有其它方法的动作.
+
 ### note
 
-该方法专用于注释. 与 leaf 行为一致.
+该方法专用于注释, 行为与 leaf 一致.
 
     ref-note-[key]-[type]
 
@@ -188,15 +179,19 @@ operatorAlpha   = "or" /
 
 ### factors
 
-该方法先产生 factors, ref 可产生多个节点(动作).
+该方法先产生 factors, 匹配成功后进行构建, 可包含 0 或多个子节点(动作).
 
     ref-factors-[key]-[type]
 
 参见 [缩出插件](#OUTDENT).
 
+注意: 构建依据层级关系对父节点生成 factors 并收纳子节点, 但非递归.
+
+所以多层级时必须使用 factors 才能获得正确的结果.
+
 ### alone
 
-该方法先产生 factors, 且 ref 产生唯一节点(动作)作为当前节点(动作).
+该方法先产生 factors, 匹配成功后进行构建, 产生唯一节点(动作)作为当前节点(动作).
 
     ref-alone-[key]-[type]
 

@@ -94,16 +94,32 @@ The structure is very close to AST, but the attribute is inside the factors.
 
 This section details the available methods and the combability with key and type.
 
-In all methods, only lit and precedence will hold the matching raw string.
+In all methods, only `lit`, `leaf`, `note` and `precedence` has the ability to extract the matching original string.
+The extracted string is only stored in the raw attribute of the leaf node.
 
 ### lit
 
-Used when you need to save the matching raw string.
-See [Thousand Separator Values] (# Demos).
+This method extracts the matching original string. Supports an empty string.
 
     ref-lit        Support stitching
     ref-lit-key    Support stitching
-    ref-lit--type  Do not support stitching
+    ref-lit--type  Do not support stitching, equivalent ref-leaf--type
+
+See [Thousand Separator Values] (# Demos).
+
+### leaf
+
+The method extracts the matching original string and generates the node. Supports the empty string.
+
+    ref-leaf-[key]-[type]
+
+### note
+
+The method is dedicated to comment, Behavior consistent with leaf.
+
+    ref-note-[key]-[type]
+
+Note: In order to correctly calculate the operator, you must use this method with ahead, prefix, infix exclude non-operator.
 
 ### to
 
@@ -124,7 +140,7 @@ Can be used with ahead, prefix, infix.
 
 ### precedence
 
-Used for binary operators. This method holds the matching raw string.
+Used for binary operators. This method holds the matching original string.
 
     ref-precedence-key
 
@@ -155,21 +171,27 @@ Note: The minimum value of precedence is from 1.
 
 ### factors
 
-The method produces factors.
+The method produces factors, Execute the build if the match is successful,
+ Which can contain 0 or more child nodes (actions).
 
     ref-factors-[key]-[type]
 
-See the effect of generating factors on the plugin.
+See [OUTDENT](#OUTDENT).
+
+Note: Build a dependency on the parent node to generate the factors and store the child nodes, but not recursively.
+
+So the use of factors in the multi-level to get the correct results.
 
 ### alone
 
-The method produces factors. Generate a unique node (action) as the current node (action).
+The method produces factors, Execute the build if the match is successful,
+ Generate a unique node (action).
 
     ref-alone-[key]-[type]
 
 Commonly used in grouping expressions.
 
-See the effect of generating factors on the plugin.
+See [OUTDENT](#OUTDENT).
 
 ### ahead
 
@@ -202,14 +224,6 @@ The method produces factors. Used for Infix Expression.
 Hold the previous action to factors, and exchange key and type.
 
     ref-infix-[key]-type
-
-### note
-
-The action for the note, with ahead, prefix, infix can exclude non-operator.
-
-    ref-note-[key]-[type]
-
-Note: For proper calculation of operators, non-operators must use this method.
 
 # Actions
 
