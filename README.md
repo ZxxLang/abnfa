@@ -374,8 +374,8 @@ Loding:
 
 Must be in the factors [0], the alone or factors method can create new factors.
 
-    OUTDENT            follow the line must be indented
-    OUTDENT-aligned    the subsequent line allows alignment with the first line
+    OUTDENT            Automatic calculation aligned
+    OUTDENT-aligned    Allow subsequent lines to align with the first line
     OUTDENT-       === OUTDENT-aligned
 
 Algorithm:

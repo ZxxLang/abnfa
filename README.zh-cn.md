@@ -381,8 +381,8 @@ Action:
 
 必须位于 factors[0], alone 或 factors 方法可创建新的 factors.
 
-    OUTDENT         相对行首, 后续行必须缩进
-    OUTDENT-aligned 相对行首, 后续行允许与第一行对齐
+    OUTDENT         自动计算 aligned
+    OUTDENT-aligned 允许后续行与首行对齐
     OUTDENT-        === OUTDENT-aligned
 
 算法:
