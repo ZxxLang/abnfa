@@ -116,7 +116,7 @@ Action:
 
 ### leaf
 
-该方法提取匹配的原始字符串, 并生成节点. 支持空字符串.
+该方法提取匹配的原始字符串, 并生成动作. 支持空字符串.
 
     ref-leaf-[key]-[type]
 
@@ -128,38 +128,70 @@ Action:
 
     ref-note-[key]-[type]
 
-为了正确计算运算子, 必须使用该方法配合 ahead, prefix, infix 排除非运算子.
+为了正确计算运算子, 必须使用该方法配合 prefix 和 infix 排除非运算子.
 
 ### to
 
-该方法不生成节点(动作), 重置 ref 首个节点的 key.
+该方法不生成动作, 重置 ref 首个动作的 key.
 
 事实上工具链总是把 'to' 替换为空字符串
 
     ref--key
     ref-to-key
 
-### next
+### reset
 
-该方法不生成节点(动作), 重置 ref 首个非 note 节点开始偏移量或 key.
+该方法不生成动作, 重置 ref 首个动作的 key 和开始偏移量.
 
-    ref-next      仅重置开始偏移量
-    ref-next-key  仅重置 key
+    ref-reset
+    ref-reset-key  重置 key
 
-可配合 ahead, prefix, infix 使用.
+参见示例中的 [if-reset](#OUTDENT)
 
-### precedence
+### amend
 
-用于二元运算符. 该方法保存匹配的原始字符串.
+和前一个动作交换位置和 key.
 
-    ref-precedence-key
+    ref-amend-key-type
 
-ref 中的优先级由低到高排列, 使用纯字符串分组替代写法, 采用贪婪匹配. 示例:
+参见示例中的 [Call-amend-func-](#OUTDENT)
+
+示例: 用于一元后缀表达式
+
+```abnf
+unaryExpr   = Number- / Identifier- [UpdateExpr-amend-operand-]
+UpdateExpr  = update-lit-operator
+update      = "++" / "--"
+```
+
+### prefix
+
+用于一元前缀表达式. 之前和内部必须生成运算子动作.
+
+    ref-prefix-[key]-type
+
+提示: 运算子必须具有 type
+
+### infix
+
+用于二元中缀表达式. 收纳先前动作到 factors, 并交换 key.
+
+    ref-infix-[key]-type
+
+该方法内部必须含有 operator 动作.
+
+### operator
+
+用于二元中缀运算符. 该方法保存匹配的原始字符串.
+
+    ref-operator-key
+
+运算符以优先级由低到高排列, 使用纯字符串分组替代写法, 采用贪婪匹配. 示例:
 
 ```abnf
 BinaryExpr      = (
-                    operatorSymbol-precedence-operator /
-                    operatorAlpha-precedence-operator 1*cwsp
+                    operatorSymbol-operator-operator /
+                    operatorAlpha-operator-operator 1*cwsp
                   ) *cwsp Expression
 
 operatorSymbol  = "" /
@@ -199,36 +231,6 @@ operatorAlpha   = "or" /
 
 参见 [缩出插件](#OUTDENT).
 
-### ahead
-
-该方法后产生 factors. 收纳先前动作到 factors, 并交换 key.
-
-    ref-ahead-key-type
-
-示例: 用于一元后缀表达式, 该例中 Identifier- 不需要 key
-
-```abnf
-unaryExpr   = Number- / Identifier- [UpdateExpr-ahead-argument-]
-UpdateExpr  = update-lit-operator
-update      = "++" / "--"
-```
-
-注意: 对比 prefix 和 infix, ahead 不检查运算符和后续运算子.
-
-### prefix
-
-该方法产生 factors. 用于一元前缀表达式. 之前和内部必须生成运算子动作.
-
-    ref-prefix-[key]-type
-
-提示: 运算子必须具有 type
-
-### infix
-
-该方法产生 factors. 用于二元中缀表达式. 之前和内部必须生成运算子动作.
-收纳先前动作到 factors, 并交换 key.
-
-    ref-infix-[key]-type
 
 # Actions
 
@@ -250,7 +252,7 @@ update      = "++" / "--"
 构建:
 
     先触发插件事件, 通常无需要处理子 factors.
-    生成 ahead  方法的子 factors
+    生成 amend  方法的子 factors
     生成 prefix 方法的子 factors
     生成 infix  方法的子 factors
     其它方法依据 start, end 生成子 factors
@@ -401,16 +403,16 @@ Action:
 first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
 stmts      = OUTDENT CRLF statement *(CRLF statement)
-statement  = if-next / expression
+statement  = if-reset / expression
 
 if         = "if" 1*SP ifCell-factors--if
 ifCell     = OUTDENT- expression--test ":" *SP
              (expression--body / stmts-factors-body) FLAG
-             [CRLF (else-next / elif-next)]
+             [CRLF (else-reset / elif-reset)]
 elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
 else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
 
-ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
+ident      = Ident-lit- DENY-keywords [Call-amend-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
 Num        = 1*DIGIT
@@ -546,15 +548,16 @@ SP     = %x20
 四则运算表达式: 支持千位分隔符数值
 
 ```abnf
-Expression   = (NumericExpr- / UnaryExpr-prefix- / group-alone)
-               [BinaryExpr-infix-left-]
+Expression   = (Num- /
+                Unary-prefix- /
+                group-alone)
+               [Binary-infix-left-]
 
 group        = "(" Expression ")"
+Unary        = minus-lit-op Expression--elt
+Binary       = operator-operator-op Expression--right
 
-UnaryExpr    = minus-lit-operator Expression-next-operand
-               Expression-next-right
-
-NumericExpr  = 1*3DIGIT-lit *("," 3DIGIT-lit)
+Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)
 minus        = "-"
 operator     = ("+" / "-") / ("*" / "/")
 DIGIT        = %x30-39
@@ -565,54 +568,56 @@ DIGIT        = %x30-39
 ```yaml
 - start: 0
   end: 7
-  type: BinaryExpr
+  type: Binary
   method: infix
   key: ''
+  precedence: 1
   factors:
     - start: 0
       end: 2
-      type: UnaryExpr
+      type: Unary
       method: prefix
       factors:
         - start: 0
           end: 1
           raw: '-'
           method: lit
-          key: operator
+          key: op
         - start: 1
           end: 2
           raw: '1'
           method: lit
-          type: NumericExpr
-          key: operand
+          type: Num
+          key: elt
       key: left
     - start: 2
       end: 3
       raw: '-'
-      method: precedence
-      key: operator
+      method: operator
+      key: op
       precedence: 1
     - start: 3
       end: 7
-      type: BinaryExpr
+      type: Binary
       method: infix
       key: right
+      precedence: 2
       factors:
         - start: 3
           end: 4
           raw: '2'
           method: lit
-          type: NumericExpr
+          type: Num
           key: left
         - start: 4
           end: 5
           raw: '*'
-          method: precedence
-          key: operator
+          method: operator
+          key: op
           precedence: 2
         - start: 5
           end: 7
-          type: UnaryExpr
+          type: Unary
           method: prefix
           key: right
           factors:
@@ -620,13 +625,13 @@ DIGIT        = %x30-39
               end: 6
               raw: '-'
               method: lit
-              key: operator
+              key: op
             - start: 6
               end: 7
               raw: '3'
               method: lit
-              type: NumericExpr
-              key: operand
+              type: Num
+              key: elt
 ```
 
 # License

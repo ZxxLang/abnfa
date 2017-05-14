@@ -119,38 +119,71 @@ The method is dedicated to comment, Behavior consistent with leaf.
 
     ref-note-[key]-[type]
 
-Note: In order to correctly calculate the operator, you must use this method with ahead, prefix, infix exclude non-operator.
+Note: In order to correctly calculate the operator, you must use this method with prefix and infix exclude non-operator.
 
 ### to
 
-Does not generate an action, Reset the first child node start offset and key.
+Does not generate an action, Reset the first action.key.
 In fact 'to' is always replaced by an empty string.
 
     ref--key
     ref-to-key
 
-### next
+### reset
 
-Does not generate an action, Reset the first child node start offset, and reset the first non-note node's key.
+Does not generate an action, Reset the first action.key and action.start.
 
-    ref-next
-    ref-next-key
+    ref-reset
+    ref-reset-key
 
-Can be used with ahead, prefix, infix.
+See [if-here](#OUTDENT)
 
-### precedence
+### amend
+
+Exchange the location and key with the previous action.
+
+    ref-amend-key-[type]
+
+See [Call-amend-func-](#OUTDENT)
+
+Example: Used for Suffix Expression
+
+```abnf
+unaryExpr   = Number- / Identifier- [UpdateExpr-amend-operand-]
+UpdateExpr  = update-lit-operator
+update      = "++" / "--"
+```
+
+### prefix
+
+Used for Prefix Expression.
+
+    ref-prefix-[key]-type
+
+Tip: The operator must have type.
+
+### infix
+
+Used for Infix Expression.
+Hold the previous action to factors, and exchange key.
+
+    ref-infix-[key]-type
+
+The method must contain operator actions internally.
+
+### operator
 
 Used for binary operators. This method holds the matching original string.
 
-    ref-precedence-key
+    ref-operator-key
 
 The priority in ref is sorted from low to high,
 using pure string group substitution, and greedy matching. Example:
 
 ```abnf
 BinaryExpr      = (
-                    operatorSymbol-precedence-operator /
-                    operatorAlpha-precedence-operator 1*cwsp
+                    operatorSymbol-operator-operator /
+                    operatorAlpha-operator-operator 1*cwsp
                   ) *cwsp Expression
 
 operatorSymbol  = "" /
@@ -193,38 +226,6 @@ Commonly used in grouping expressions.
 
 See [OUTDENT](#OUTDENT).
 
-### ahead
-
-The method produces factors. Hold the previous action to factors,
-and exchange key and type.
-
-    ref-ahead-[key]-[type]
-
-Example: Used for Suffix Expression, in this case Identifier- no key required
-
-```abnf
-unaryExpr   = Number- / Identifier- [UpdateExpr-ahead-argument-]
-UpdateExpr  = update-lit-operator
-update      = "++" / "--"
-```
-
-Note: Compared to prefix and infix, ahead does not check the operators and operators.
-
-### prefix
-
-The method produces factors. Used for Prefix Expression.
-
-    ref-prefix-[key]-type
-
-Tip: The operator must have type.
-
-### infix
-
-The method produces factors. Used for Infix Expression.
-Hold the previous action to factors, and exchange key and type.
-
-    ref-infix-[key]-type
-
 # Actions
 
 The core tool Actions generates AATs according to
@@ -248,7 +249,7 @@ Construct:
 
 First trigger plugin events, usually no need to deal with child factors.
 
-Generates the child factors of the ahead method
+Generates the child factors of the amend method
 
 Generates the seed factors of the prefix method
 
@@ -395,16 +396,16 @@ Example: simplified Python if-else
 first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
 topStmts   = *CRLF statement *(CRLF statement) *CRLF
 stmts      = OUTDENT CRLF statement *(CRLF statement)
-statement  = if-next / expression
+statement  = if-here / expression
 
 if         = "if" 1*SP ifCell-factors--if
 ifCell     = OUTDENT- expression--test ":" *SP
              (expression--body / stmts-factors-body) FLAG
-             [CRLF (else-next / elif-next)]
+             [CRLF (else-here / elif-here)]
 elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
 else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
 
-ident      = Ident-lit- DENY-keywords [Call-ahead-func-]
+ident      = Ident-lit- DENY-keywords [Call-amend-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
 Num        = 1*DIGIT
@@ -540,15 +541,16 @@ Output:
 Four expression expressions that support thousands of delimiter values
 
 ```abnf
-Expression   = (NumericExpr- / UnaryExpr-prefix- / group-alone)
-               [BinaryExpr-infix-left-]
+Expression   = (Num- /
+                Unary-prefix- /
+                group-alone)
+               [Binary-infix-left-]
 
 group        = "(" Expression ")"
+Unary        = minus-lit-op Expression--elt
+Binary       = operator-operator-op Expression--right
 
-UnaryExpr    = minus-lit-operator Expression-next-operand
-               Expression-next-right
-
-NumericExpr  = 1*3DIGIT-lit *("," 3DIGIT-lit)
+Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)
 minus        = "-"
 operator     = ("+" / "-") / ("*" / "/")
 DIGIT        = %x30-39
@@ -559,54 +561,56 @@ Output of the sample `-1-2*-3`:
 ```yaml
 - start: 0
   end: 7
-  type: BinaryExpr
+  type: Binary
   method: infix
   key: ''
+  precedence: 1
   factors:
     - start: 0
       end: 2
-      type: UnaryExpr
+      type: Unary
       method: prefix
       factors:
         - start: 0
           end: 1
           raw: '-'
           method: lit
-          key: operator
+          key: op
         - start: 1
           end: 2
           raw: '1'
           method: lit
-          type: NumericExpr
-          key: operand
+          type: Num
+          key: elt
       key: left
     - start: 2
       end: 3
       raw: '-'
-      method: precedence
-      key: operator
+      method: operator
+      key: op
       precedence: 1
     - start: 3
       end: 7
-      type: BinaryExpr
+      type: Binary
       method: infix
       key: right
+      precedence: 2
       factors:
         - start: 3
           end: 4
           raw: '2'
           method: lit
-          type: NumericExpr
+          type: Num
           key: left
         - start: 4
           end: 5
           raw: '*'
-          method: precedence
-          key: operator
+          method: operator
+          key: op
           precedence: 2
         - start: 5
           end: 7
-          type: UnaryExpr
+          type: Unary
           method: prefix
           key: right
           factors:
@@ -614,13 +618,13 @@ Output of the sample `-1-2*-3`:
               end: 6
               raw: '-'
               method: lit
-              key: operator
+              key: op
             - start: 6
               end: 7
               raw: '3'
               method: lit
-              type: NumericExpr
-              key: operand
+              type: Num
+              key: elt
 ```
 
 # License
