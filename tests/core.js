@@ -223,3 +223,18 @@ test('rules', function(t) {
 	t.deepEqual(bare.unrefs, ['d'], 'unrefs')
 	t.deepEqual(bare.literals, ['string'], 'literals')
 });
+
+test("type of rule", function(t) {
+	var text = '\
+		alts = a / b\n\
+		seqs = 1*(a b / c) d\n\
+		raw  = ("ss")\n\
+		'
+
+	var bare = core.tokenize(text, core.Entries, core.Rules);
+	t.errify(bare)
+	for (var key in bare.defs) {
+		if (!bare.defs[key][key])
+			t.fail(key,bare.defs)
+	}
+})

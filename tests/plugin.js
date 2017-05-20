@@ -28,30 +28,30 @@ var test = require('./test'),
 		common,
 	].join('\n'),
 	grammarPythonIndent = [
-		'first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts',
+		'first      = ACTIONS-OUTDENT ACTIONS-DENY topStmts',
 		'topStmts   = *CRLF statement *(CRLF statement) *CRLF',
 		'stmts      = OUTDENT CRLF statement *(CRLF statement)',
 		'statement  = if-reset / expression',
 		'if         = "if" 1*SP ifCell-factors--if',
 		'ifCell     = OUTDENT- expression--test ":" *SP',
-		'             (expression--body /stmts-factors-body) FLAG',
+		'             (expression-list-body / stmts-list-body)',
 		'             [CRLF (else-reset / elif-reset)]',
-		'elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG',
+		'elif       = "elif" 1*SP ifCell-list-orelse-if',
 		'else       = "else:" *SP',
-		'             (expression--orelse / stmts-factors-orelse) FLAG',
+		'             (expression-list-orelse / stmts-list-orelse)',
 		'ident      = Ident-lit- DENY-keywords [Call-amend-func-]',
-		'keywords   = "class"/ "if" / "else" / "elif"',
+		'keywords   = "class" / "if" / "else" / "elif"',
 		'Ident      = ALPHA *(ALPHA / DIGIT)',
 		'Num        = 1*DIGIT',
 		'expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP',
 		'elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]',
 		'group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"',
-		'List       = "[" [elements-factors-elts FLAG] "]"',
-		'Set        = "{" [elements-factors-elts FLAG] "}"',
+		'List       = "[" [elements-list-elts] "]"',
+		'Set        = "{" [elements-list-elts] "}"',
 		'Dict       = "{" [pairs] "}"',
-		'pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG',
+		'pair       = expression-list-keys ":" *WSP expression-list-values',
 		'pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]',
-		'Call       = args-factors-args FLAG',
+		'Call       = args-list-args',
 		'args       = "()" / "(" [elements] ")"',
 		common,
 	].join('\n'),
@@ -66,7 +66,7 @@ var test = require('./test'),
 		'computed     = Ident- *(Dot-amend-object- / Index-amend-object- / Call-amend-func-)',
 		'Dot          = "." MUST Ident--property-',
 		'Index        = "[" MUST Expression--index "]"',
-		'Call         = "(" MUST arguments-factors-args FLAG")"',
+		'Call         = "(" MUST arguments-list-args")"',
 
 		'arguments    = [Expression-alone *("," MUST Expression-alone)]',
 
@@ -151,12 +151,12 @@ var test = require('./test'),
 		'Ident        = 1*ALPHA-lit',
 
 		'supply       = Ident- [Chain-amend-first-]',
-		'Chain        = 1*(chain-reset-chains FLAG)',
-		'chain        = "." Dot-factors- / "[" List-factors- "]" / call-reset',
+		'Chain        = 1*(chain-reset-chains)',
+		'chain        = "." Dot-list- / "[" List-list- "]" / call-reset',
 		'Dot          = OUTDENT MUST WSP Ident--operand-',
-		'List         = OUTDENT MUST WSP expressions-factors-elts FLAG WSP [","] WSP',
-		'call         = "(" Call-factors- ")"',
-		'Call         = OUTDENT- MUST WSP [expressions-factors-args FLAG] WSP',
+		'List         = OUTDENT MUST WSP expressions-list-elts WSP [","] WSP',
+		'call         = "(" Call-list- ")"',
+		'Call         = OUTDENT- MUST WSP [expressions-list-args] WSP',
 
 		'groupExpr    = OUTDENT- MUST WSP Expression WSP',
 
@@ -270,48 +270,48 @@ test('python indent', function(t) {
 		['\ni\nx', 'Ident"i",Ident"x"'],
 		['i\nx', 'Ident"i",Ident"x"'],
 		['{i,1}', 'Set[+elts[Ident"i",Num"1"]]'],
-		['{a:1,b:2}', 'Dict[Ident+keys"a",Num+values"1",Ident+keys"b",Num+values"2"]'],
+		['{a:1,b:2}', 'Dict[+keys[Ident"a"],+values[Num"1"],+keys[Ident"b"],+values[Num"2"]]'],
 		['if t:\ndo', ''],
-		['if t:do    ', 'if[Ident~test"t",Ident+body"do"]'],
+		['if t:do    ', 'if[Ident~test"t",+body[Ident"do"]]'],
 		['if t:\n\tdo', 'if[Ident~test"t",+body[Ident"do"]]'],
 		['if [t]:\n\tdo', 'if[List~test[+elts[Ident"t"]],+body[Ident"do"]]'],
 		['if (t):\n\ti\n\tx', 'if[Ident~test"t",+body[Ident"i",Ident"x"]]'],
-		['if (t): {i}', 'if[Ident~test"t",Set+body[+elts[Ident"i"]]]'],
-		['if (t): {\n\ti\n}', 'if[Ident~test"t",Set+body[+elts[Ident"i"]]]'],
-		['if (t):[i]\n', 'if[Ident~test"t",List+body[+elts[Ident"i"]]]'],
-		['if (t):[i,x]', 'if[Ident~test"t",List+body[+elts[Ident"i",Ident"x"]]]'],
+		['if (t): {i}', 'if[Ident~test"t",+body[Set[+elts[Ident"i"]]]]'],
+		['if (t): {\n\ti\n}', 'if[Ident~test"t",+body[Set[+elts[Ident"i"]]]]'],
+		['if (t):[i]\n', 'if[Ident~test"t",+body[List[+elts[Ident"i"]]]]'],
+		['if (t):[i,x]', 'if[Ident~test"t",+body[List[+elts[Ident"i",Ident"x"]]]]'],
 
 		['if t:do \nelse:\ni', ''],
 		['if t:do \nelse:i\n',
-			'if[Ident~test"t",Ident+body"do",Ident+orelse"i"]'
+			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i"]]'
 		],
 
 		['if t:do \nelse:\n\ti\n\tx ',
-			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]'
+			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]'
 		],
 		['if t:do \nelse:\n\t\ti\n\t\tx',
-			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]'
+			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]'
 		],
 
 		['if t:do \nelse:\n\ti\n\tx\ndo()',
-			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
+			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]' +
 			',Call[Ident~func"do",+args[]]'
 		],
 
 		['if t: do\nelif x:do',
-			'if[Ident~test"t",Ident+body"do",' +
-			'if+orelse[Ident~test"x",Ident+body"do"]' +
+			'if[Ident~test"t",+body[Ident"do"],' +
+			'if+orelse[Ident~test"x",+body[Ident"do"]]' +
 			']'
 		],
 		['if t:do \nelif t: do\nelse:\n\ti\n\tx\ndo()',
-			'if[Ident~test"t",Ident+body"do",' +
-			'if+orelse[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
+			'if[Ident~test"t",+body[Ident"do"],' +
+			'if+orelse[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]' +
 			']' +
 			',Call[Ident~func"do",+args[]]'
 		],
 		['if t:\n\tif t: do\n\telse:\n\t\ti\n\t\tx\ndo(x)',
 			'if[Ident~test"t",+body[' +
-			'if[Ident~test"t",Ident+body"do",+orelse[Ident"i",Ident"x"]]' +
+			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]' +
 			']]' +
 			',Call[Ident~func"do",+args[Ident"x"]]'
 		],

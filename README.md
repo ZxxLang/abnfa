@@ -215,6 +215,14 @@ Note: Build a dependency on the parent node to generate the factors and store th
 
 So the use of factors in the multi-level to get the correct results.
 
+### list
+
+The method behaves the same as the factors method, and ref generates the array element (key is the array).
+
+    ref-list-[key]-[type]
+
+See [OUTDENT](#OUTDENT).
+
 ### alone
 
 The method produces factors, Execute the build if the match is successful,
@@ -231,7 +239,7 @@ See [OUTDENT](#OUTDENT).
 The core tool Actions generates AATs according to
  the rules that match the input source.
 
-Understanding the following build steps helps to
+Understanding the following processing steps helps to
  properly use ABNFA grammar and develop plug-ins.
 
 match:
@@ -304,20 +312,19 @@ Arguments
     method Additional argument are saved in the `method` attribute
     key    Additional argument are saved in the `key` attribute
 
-Returns a Boolean value indicating success or failure.
+Returns the event object motion objects and more than a representation of the current index property factors.length
 
 Trigger the event stage:
 
 ```js
-function event(self, factors, index, node){}
+function trigger(self, factors, event){}
 ```
 
 Arguments
 
     self     The current Actions instance
     factors  Need to deal with the action array
-    index    The event in the index of factors, factors[index] is null
-    node     The event node value, factors[index]
+    event    The event object
 
 Returns a Boolean value indicating success or failure.
 
@@ -335,8 +342,8 @@ first = ACTIONS-CRLF ACTIONS-FLAG real-grammar-rule
 
 Assigns the flag attribute to the last action last = factors [factors.length-1] in the current factors.
 
-    FLAG        --> last.flag = "+",   the last.parentNode.key is an array
-    FLAG-flags  --> last.flag = flags, customize flags for last.type
+
+    FLAG-flags --> last.flag = (last.flag || '') + '-' + flags
 
 ### CRLF
 
@@ -432,22 +439,63 @@ ALPHA  = %x41-5A / %x61-7A
 DIGIT  = %x30-39
 ```
 
+### RAW
+
+Check whether the raw attribute value of the previous action satisfies the condition.
+
+    RAW-IS-tail   ---> prev.raw == tail
+    RAW-UN-tail   ---> prev.raw != tail
+
+Where `tail` is 'IS-' or 'UN-' after all the strings.
+
+Example: ±Infinity, ±NaN
+
+```abnf
+first       = ACTIONS-RAW Float
+
+Float       = float-leaf-Float / InfNaN---Float
+float       = [sign] 1*DIGIT "." 1*DIGIT
+InfNaN      = [sign-lit] 1*ALPHA-lit (
+                RAW-IS-NaN / RAW-IS--Infinity /
+                RAW-IS--NaN / RAW-IS-Infinity
+              )
+
+sign        = "-"
+ALPHA       = %x41-5A / %x61-7A
+DIGIT       = %x30-39
+```
+
 ### DENY
 
-Check the raw attribute of the previous action and reject the string string value provided by ref.
-If the refusal will cause the resolution to fail.
+If the raw attribute of the previous action is equal to the optional string provided by rulename, terminate the matching process.
 
-    DENY-ref
+    DENY-rulename-[rulename]-[rulename]
 
 Example:
 
 ```abnf
-first      = ACTIONS-DENY Identifier- DENY-keywords
+first      = ACTIONS-DENY Identifier- DENY-keywords-literal
 Identifier = ALPHA *(ALPHA / DIGIT)
 keywords   = "if" / "else" / "function"
+literal    = "true" / "false" / "null"
 ALPHA      = %x41-5A / %x61-7A
 DIGIT      = %x30-39
 ```
+
+### NON
+
+If the raw attribute of the previous action is not equal to the optional string provided by rulename.
+
+The difference between the plugin and DENY:
+
+   1. Allow raw to be null
+   2. Does not terminate the match
+
+### SWAP
+
+Swap the properties of the first two actions, key and flag.
+
+    SWAP
 
 # Demos
 

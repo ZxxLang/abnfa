@@ -1,13 +1,14 @@
 var tap = require('tap');
 var yaml = require('js-yaml');
 
-tap.pass('wrap t.end() and dump');
+if (module === require.main) {
+	tap.pass('ok')
+	return
+}
+
 tap.Test.prototype.errify = function(err, extra) {
-	if (err instanceof Error) {
-		this.ifErr(err, '',
-			Array.isArray(extra) && extra || [extra])
-		this.end()
-		throw err
+	if (err instanceof Error){
+		this.error(err, Array.isArray(extra) && extra || [extra])
 	}
 }
 
@@ -18,7 +19,9 @@ tap.Test.prototype.dump = function() {
 }
 
 module.exports = function test(what, fn) {
-	tap.test(what, function(t) {
+	tap.test(what, {
+		bail: true
+	}, function(t) {
 		fn(t)
 		t.ok(true, 'ok')
 		t.end()

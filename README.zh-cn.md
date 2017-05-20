@@ -120,7 +120,7 @@ Action:
 
     ref-leaf-[key]-[type]
 
-在 leaf 之下不能再含有其它方法的动作.
+在 ref 内不生成动作.
 
 ### note
 
@@ -150,7 +150,7 @@ Action:
 
 ### amend
 
-和前一个动作交换位置和 key.
+当 ref 产生动作时和前一个动作交换位置和 key, 否则修改前一个动作的 key 和 type
 
     ref-amend-key-type
 
@@ -221,6 +221,14 @@ operatorAlpha   = "or" /
 
 所以多层级时必须使用 factors 才能获得正确的结果.
 
+### list
+
+与 factors 方法行为一样, 并且 ref 生成数组元素(key 是数组).
+
+    ref-list-[key]-[type]
+
+参见 [缩出插件](#OUTDENT).
+
 ### alone
 
 该方法先产生 factors, 匹配成功后进行构建, 产生唯一节点(动作)作为当前节点(动作).
@@ -236,11 +244,7 @@ operatorAlpha   = "or" /
 
 核心工具 Actions 依据规则匹配输入源生成 AAT.
 
-了解下述生成步骤有助于正确使用 ABNFA 文法以及开发插件.
-
-初始:
-
-    rules, source 和可选的 plugins 开始解析匹配
+了解下述处理步骤有助于正确使用 ABNFA 文法以及开发插件.
 
 匹配:
 
@@ -303,7 +307,7 @@ function before(type, method, key){}
     method 字符串, 附加参数, 保存在 method 属性
     key    字符串, 附加参数, 保存在 method 属性
 
-该函数返回布尔值 true 表示成功, false 表示失败.
+返回事件对象, 该对象比动作对象多一个表示当前 factors.length 的 index 属性
 
 如果无需添加触发事件, 执行阶段也要返回布尔值 true 表示成功, false 表示失败.
 
@@ -312,15 +316,14 @@ function before(type, method, key){}
 由 Actions 内部机制在构建时首先触发
 
 ```js
-function event(self, factors, index, node){}
+function trigger(self, factors, event){}
 ```
 
 参数:
 
     self     该 Actions 实例
     factors  需要处理的动作数组
-    index    该事件在 factors 中的下标, factors[index] 已被设置为 null
-    node     该事件节点值 factors[index]
+    event    事件对象
 
 返回:
 
@@ -341,8 +344,7 @@ first = ACTIONS-CRLF ACTIONS-FLAG real-grammar-rule
 
 向当前 factors 中最后一个动作 last = factors[factors.length-1] 的 flag 属性赋值.
 
-    FLAG        --> last.flag = "+",     表示 last.parentNode.key 是个数组
-    FLAG-flags  --> last.flag = "flags", 表示 last.type 额外标记
+    FLAG-flags  --> last.flag = (last.flag || '') + '-' + flags
 
 ### CRLF
 
@@ -376,8 +378,6 @@ Action:
     ACTIONS-OUTDENT      行首缩进为 1 个水平制表符(%x09)
     ACTIONS-OUTDENT-SP-n 行首缩进为 n 个空格(%x20), n <= 8, 缺省为 1
     ACTIONS-OUTDENT-SP   行首缩进为 n 个空格(%x20), 自动计算, n <= 8
-
-使用格式:
 
 必须位于 factors[0], alone 或 factors 方法可创建新的 factors.
 
@@ -439,24 +439,64 @@ ALPHA  = %x41-5A / %x61-7A
 DIGIT  = %x30-39
 ```
 
+### RAW
+
+检查前一个动作的 raw 属性值是否满足条件.
+
+    RAW-IS-tail   ---> prev.raw == tail
+    RAW-UN-tail   ---> prev.raw != tail
+
+注意这里的 `tail` 是 'IS-' 或者 'UN-' 之后的所有字符串.
+
+示例: ±Infinity, ±NaN
+
+```abnf
+first       = ACTIONS-RAW Float
+
+Float       = float-leaf-Float / InfNaN---Float
+float       = [sign] 1*DIGIT "." 1*DIGIT
+InfNaN      = [sign-lit] 1*ALPHA-lit (
+                RAW-IS-NaN / RAW-IS--Infinity /
+                RAW-IS--NaN / RAW-IS-Infinity
+              )
+
+sign        = "-"
+ALPHA       = %x41-5A / %x61-7A
+DIGIT       = %x30-39
+```
+
 ### DENY
 
-检查前一个动作的 raw 属性, 拒绝 ref 提供的字符串序列值.
-如果拒绝会导致解析失败.
+拒绝前一个动作的 raw 属性值等于 rulename 提供的可选字符串.
+拒绝会终止匹配.
 
-使用格式:
-
-    DENY-ref
+    DENY-rulename-[rulename]-[rulename]
 
 示例: 拒绝 Identifier 使用关键字
 
 ```abnf
-first      = ACTIONS-DENY Identifier- DENY-keywords
+first      = ACTIONS-DENY Identifier- DENY-keywords-literal
 Identifier = ALPHA *(ALPHA / DIGIT)
 keywords   = "if" / "else" / "function"
+literal    = "true" / "false" / "null"
 ALPHA      = %x41-5A / %x61-7A
 DIGIT      = %x30-39
 ```
+
+### NON
+
+期望前一个动作的 raw 属性值不等于 rulename 提供的可选字符串.
+
+该插件与 DENY 的区别:
+
+  1. 允许 raw 为 null
+  2. 不终止匹配
+
+### SWAP
+
+互换之前两个 action 的 key 和 flag
+
+    SWAP
 
 # Demos
 
