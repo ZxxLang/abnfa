@@ -239,6 +239,13 @@ operatorAlpha   = "or" /
 
 参见 [缩出插件](#OUTDENT).
 
+### test
+
+该方法测试 ref 并恢复到之前的状态, 可选择保留前进的偏移量.
+
+    ref-test
+    ref-test-keep-pos
+    ref-test-any-string === ref-test-keep-pos
 
 # Actions
 

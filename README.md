@@ -234,6 +234,14 @@ Commonly used in grouping expressions.
 
 See [OUTDENT](#OUTDENT).
 
+### test
+
+The method tests ref and returns to the previous state, optionally preserving the forward offset.
+
+    ref-test
+    ref-test-keep-pos
+    ref-test-any-string === ref-test-keep-pos
+
 # Actions
 
 The core tool Actions generates AATs according to
