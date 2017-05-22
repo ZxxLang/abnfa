@@ -105,6 +105,22 @@ This method extracts the matching original string. Supports an empty string.
     ref-lit-key    Support stitching
     ref-lit--type  Do not support stitching, equivalent ref-leaf--type
 
+Stitching must avoid back, thousands of separated decimal places
+ `.123'456'78` as an example:
+
+```abnf
+;incorrect = "." *(d3-lit "'") d12-lit
+;because d3 will change the existing action when splicing
+decimals   = "." (
+              d4-lit /
+              d3-lit *("'" d3-lit) ["'" d12-lit] /
+              d12-lit
+            )
+d12        = 1*2DIGIT
+d3         = 3DIGIT
+d4         = 4*DIGIT
+```
+
 See [Thousand Separator Values] (# Demos).
 
 ### leaf

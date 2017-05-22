@@ -112,6 +112,22 @@ Action:
     ref-lit-key    支持多 key 属性, 且拼接相同的 key
     ref-lit--type  不支持拼接, 等价 ref-leaf--type
 
+拼接时必须避免回退, 千位分隔小数位 `.123'456'78` 为例:
+
+
+```abnf
+; incorrect = "." *(d3-lit "'") d12-lit
+; 因 d3 拼接时会改变已有动作
+decimals   = "." (
+              d4-lit /
+              d3-lit *("'" d3-lit) ["'" d12-lit] /
+              d12-lit
+            )
+d12        = 1*2DIGIT
+d3         = 3DIGIT
+d4         = 4*DIGIT
+```
+
 参见 [千位分隔符数值](#Demos).
 
 ### leaf

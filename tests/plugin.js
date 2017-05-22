@@ -309,7 +309,15 @@ test('python indent', function(t) {
 			']' +
 			',Call[Ident~func"do",+args[]]'
 		],
-		['if t:\n\tif t: do\n\telse:\n\t\ti\n\t\tx\ndo(x)',
+		[
+			[
+				'if t:',
+				'	if t: do',
+				'	else:',
+				'		i',
+				'		x',
+				'do(x)',
+			].join('\n'),
 			'if[Ident~test"t",+body[' +
 			'if[Ident~test"t",+body[Ident"do"],+orelse[Ident"i",Ident"x"]]' +
 			']]' +

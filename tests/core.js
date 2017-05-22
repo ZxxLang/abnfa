@@ -203,7 +203,6 @@ function rules(tests) {
 		var actual = cr.retrans(null);
 
 		expected = expected || actual;
-
 		t.deepEqual(actual, expected, s)
 	})
 }
