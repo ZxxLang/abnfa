@@ -214,13 +214,13 @@ test('crlf', function(t) {
 test('lit note leaf', function(t) {
 	var product, actual,
 		src = '123ABCefg456\n',
-		expected = 'Number--"123",!"ABC","efg",Number"456",_Note~0""',
+		expected = 'ASON:[Number--[~raw"123"],!"ABC","efg",Number[~raw"456"],_Note~0""]',
 		grammarNote = [
-			'first  = ACTIONS-FLAG Number- FLAG-- note-note raw-customize Number- Note-leaf-0-_Note %x0A',
+			'first  = ACTIONS-FLAG Number-factors- FLAG-- note-note raw-customize Number- Note-leaf-0-_Note %x0A',
 			'raw    = 1*alpha-lit',
 			'Note   = *alpha',
 			'note   = 1*ALPHA',
-			'Number = 1*DIGIT-lit',
+			'Number = 1*DIGIT-lit-raw',
 			'ALPHA  = %x41-5A',
 			'alpha  = %x61-7A',
 			'DIGIT   = %x30-39',
@@ -230,7 +230,7 @@ test('lit note leaf', function(t) {
 	t.errify(actions)
 	product = actions.parse(src);
 	t.errify(product, [actions.factors])
-	actual = ASON.serialize(product)
+	actual = ASON.stringify(product, 1)
 	t.equal(actual, expected, expected, [actual, product]);
 })
 

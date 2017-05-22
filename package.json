@@ -2,7 +2,13 @@
   "name": "abnfa",
   "version": "0.7.1",
   "description": "ABNF Actions syntax for directly generating an AST",
-  "main": "bin/abnfa",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "bin": {
+    "aa": "bin/run.js"
+  },
   "scripts": {
     "test": "tap tests/*.js --cov"
   },

@@ -233,7 +233,6 @@ test("type of rule", function(t) {
 	var bare = core.tokenize(text, core.Entries, core.Rules);
 	t.errify(bare)
 	for (var key in bare.defs) {
-		if (!bare.defs[key][key])
-			t.fail(key,bare.defs)
+		if (!bare.defs[key][key]) t.fail(key, bare.defs)
 	}
 })

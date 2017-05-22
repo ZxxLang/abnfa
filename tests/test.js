@@ -7,16 +7,15 @@ if (module === require.main) {
 }
 
 tap.Test.prototype.errify = function(err, extra) {
-	if (err instanceof Error){
-		this.error(err, Array.isArray(extra) && extra || [extra])
-	}
+	if (err instanceof Error) this.error(err, Array.isArray(extra) && extra || [extra])
 }
 
 tap.Test.prototype.dump = function() {
-	this.push(' \n')
-	for (var i = 0; i < arguments.length; i++)
-		this.push(yaml.dump(arguments[i]))
+	arguments.length && this.push(' \n')
+	for (var i = 0; i < arguments.length; i++) this.push(yaml.dump(arguments[i]))
 }
+
+tap.Test.prototype.dump()
 
 module.exports = function test(what, fn) {
 	tap.test(what, {
