@@ -250,13 +250,20 @@ Commonly used in grouping expressions.
 
 See [OUTDENT](#OUTDENT).
 
-### test
+### ify
 
-The method tests ref and returns to the previous state, optionally preserving the forward offset.
+This method tests when ref passes, and returns to the previous state, optionally preserving the forward offset.
 
-    ref-test
-    ref-test-keep-pos
-    ref-test-any-string === ref-test-keep-pos
+    ref-ify
+    ref-ify-keep-pos
+    ref-ify-any        === ref-ify-keep-pos
+    ref-ify-any-string === ref-ify-keep-pos
+
+### ifn
+
+The method returns true when ref is passed, and does not return true.
+
+    ref-ifn
 
 # Actions
 

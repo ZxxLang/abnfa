@@ -255,13 +255,19 @@ operatorAlpha   = "or" /
 
 参见 [缩出插件](#OUTDENT).
 
-### test
+### ify
 
-该方法测试 ref 并恢复到之前的状态, 可选择保留前进的偏移量.
+该方法测试 ref 通过时恢复到之前的状态, 可选择保留前进的偏移量.
 
-    ref-test
-    ref-test-keep-pos
-    ref-test-any-string === ref-test-keep-pos
+    ref-ify
+    ref-ify-keep-pos
+    ref-ify-any-string === ref-ifyify-keep-pos
+
+### ifn
+
+该方法测试 ref 通过时返回 false, 不通过返回 true.
+
+    ref-ifn
 
 # Actions
 
