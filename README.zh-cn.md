@@ -413,6 +413,7 @@ Action:
     OUTDENT         自动计算 aligned
     OUTDENT-aligned 允许后续行与首行对齐
     OUTDENT-        === OUTDENT-aligned
+    OUTDENT-0       === OUTDENT- 且无缩进时判定缩出
 
 算法:
 

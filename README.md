@@ -415,6 +415,7 @@ Must be in the factors [0], the alone or factors method can create new factors.
     OUTDENT            Automatic calculation aligned
     OUTDENT-aligned    Allow subsequent lines to align with the first line
     OUTDENT-       === OUTDENT-aligned
+    OUTDENT-0      === OUTDENT- And is outdent when no indentation
 
 Algorithm:
 
