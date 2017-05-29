@@ -166,9 +166,10 @@ d4         = 4*DIGIT
 
 ### amend
 
-当 ref 产生动作时和前一个动作交换位置和 key, 否则修改前一个动作的 key 和 type
+当 ref 产生动作时和前一个动作交换位置和 key, 否则修改前一个动作的 key 或 type
 
-    ref-amend-key-type
+    ref-amend--type     只更改 type
+    ref-amend-key-type  只交换 key
 
 参见示例中的 [Call-amend-func-](#OUTDENT)
 

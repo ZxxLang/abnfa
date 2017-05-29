@@ -158,7 +158,8 @@ See [if-here](#OUTDENT)
 
 Exchange the location and key with the previous action.
 
-    ref-amend-key-[type]
+    ref-amend--type     change type only
+    ref-amend-key-type  exchange key only
 
 See [Call-amend-func-](#OUTDENT)
 
