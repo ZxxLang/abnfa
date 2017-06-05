@@ -256,13 +256,6 @@ operatorAlpha   = "or" /
 
 参见 [缩出插件](#OUTDENT).
 
-### ify
-
-该方法测试 ref 通过时恢复到之前的状态, 可选择保留前进的偏移量.
-
-    ref-ify
-    ref-ify-keep-pos
-    ref-ify-any-string === ref-ifyify-keep-pos
 
 ### ifn
 
@@ -274,22 +267,32 @@ operatorAlpha   = "or" /
 
 核心工具 Actions 依据规则匹配输入源生成 AAT.
 
+Actions 实例有几个重要属性:
+
+1. src      保存待匹配的字符串
+2. pos      当前待匹配位置
+3. end      结束位置, 默认为 src.length
+4. frozen   冻结位置, MUST 插件可设置此位置
+5. factors  动作数组, 元素为匹配生成的 Action
+6. events   事件数组, 元素为设置多了 index 属性的 Action
+
 了解下述处理步骤有助于正确使用 ABNFA 文法以及开发插件.
 
 匹配:
 
     自顶向下进行匹配, 自底向上生成动作
-    插件被执行时可发出中断或创建插件事件, 但注意上级动作可能未生成.
-    匹配过程可能直接生成子 factors, 比如 alone 方法
-    每个 factors 都执行构建步骤.
+    插件被执行时产生的事件保存在数组属性 events 中
+    alone, factors, list 方法触发构建
+    ref-amend-key-type   方法触发构建
+    匹配完成触发构建
 
 构建:
 
-    先触发插件事件, 通常无需要处理子 factors.
-    生成 amend  方法的子 factors
-    生成 prefix 方法的子 factors
-    生成 infix  方法的子 factors
-    其它方法依据 start, end 生成子 factors
+    先执行事件, 可直接处理每个动作, 或者置 null 表示删除
+    设置两列信息, 如果需要的话
+    构建 prefix 方法的子动作树
+    构建 infix  方法的子动作树
+    依据 start, end 确定从属关系构建子动作树
 
 ## plugins
 
@@ -319,13 +322,7 @@ function LoadOrExecutePlugin(n, self): bool {}
 
 执行阶段:
 
-以 ref 表示插件名称写在文法中.
-
-发出中断, 在插件执行成功且需要中断后续匹配时使用. 操作:
-
-    插件设置 Actions 实例的属性 break = true 并返回 true 表示成功
-
-生成事件, 通过调用 Actions 实例的 before 方法.
+以 ref 表示插件名称写在文法中. 通过调用 Actions 实例的 before 方法生成事件.
 
 ```js
 function before(type, method, key){}
@@ -353,7 +350,7 @@ function trigger(self, factors, event){}
 
     self     该 Actions 实例
     factors  需要处理的动作数组
-    event    事件对象
+    event    由 before 生成的事件
 
 返回:
 
@@ -399,6 +396,23 @@ Action:
 
     MUST
 
+### POP
+
+该插件产生事件, 实现 factors.pop() 的效果
+
+    POP
+
+在事件中执行如下代码:
+
+```js
+function ON_POP(self, list, n) {
+  // list == self.factors
+  if (n.index && n.index <= list.length)
+    list[n.index - 1] = null
+  return true
+}
+```
+
 ### OUTDENT
 
 支持缩进语法, 缩进量必须一致, 允许连续空行. 自动加载 CRLF.
@@ -409,7 +423,7 @@ Action:
     ACTIONS-OUTDENT-SP-n 行首缩进为 n 个空格(%x20), n <= 8, 缺省为 1
     ACTIONS-OUTDENT-SP   行首缩进为 n 个空格(%x20), 自动计算, n <= 8
 
-必须位于 factors[0], alone 或 factors 方法可创建新的 factors.
+该插件产生事件, 必须位于 factors[0], alone 或 factors 方法可创建新的 factors.
 
     OUTDENT         自动计算 aligned
     OUTDENT-aligned 允许后续行与首行对齐

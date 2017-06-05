@@ -12,7 +12,7 @@ tap.Test.prototype.errify = function(err, extra) {
 
 tap.Test.prototype.dump = function() {
 	arguments.length && this.push(' \n')
-	for (var i = 0; i < arguments.length; i++) this.push(yaml.dump(arguments[i]))
+	for (var i = 0; i < arguments.length; i++) this.push(arguments[i])
 }
 
 tap.Test.prototype.dump()

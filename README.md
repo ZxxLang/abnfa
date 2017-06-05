@@ -251,15 +251,6 @@ Commonly used in grouping expressions.
 
 See [OUTDENT](#OUTDENT).
 
-### ify
-
-This method tests when ref passes, and returns to the previous state, optionally preserving the forward offset.
-
-    ref-ify
-    ref-ify-keep-pos
-    ref-ify-any        === ref-ify-keep-pos
-    ref-ify-any-string === ref-ify-keep-pos
-
 ### ifn
 
 The method returns true when ref is passed, and does not return true.
@@ -399,6 +390,23 @@ Action:
 Subsequent matches must be successful and refuse to roll back.
 
     MUST
+
+### POP
+
+The plugin generates an event and implements the effect of factors.pop().
+
+    POP
+
+Execute the following code in the event:
+
+```js
+function ON_POP(self, list, n) {
+  // list == self.factors
+  if (n.index && n.index <= list.length)
+    list[n.index - 1] = null
+  return true
+}
+```
 
 ### OUTDENT
 
