@@ -186,21 +186,21 @@ Hold the previous action to factors, and exchange key.
 
     ref-infix-[key]-type
 
-The method must contain operator actions internally.
+The method must contain binary actions internally.
 
-### operator
+### binary
 
 Used for binary operators. This method holds the matching original string.
 
-    ref-operator-key
+    ref-binary-key
 
 The priority in ref is sorted from low to high,
 using pure string group substitution, and greedy matching. Example:
 
 ```abnf
 BinaryExpr      = (
-                    operatorSymbol-operator-operator /
-                    operatorAlpha-operator-operator 1*cwsp
+                    operatorSymbol-binary-operator /
+                    operatorAlpha-binary-operator 1*cwsp
                   ) *cwsp Expression
 
 operatorSymbol  = "" /
@@ -219,22 +219,22 @@ and the string operator is checked to the right of the string operator.
 
 Note: The minimum value of precedence is from 1.
 
-### factors
+### body
 
 The method produces factors, Execute the build if the match is successful,
  Which can contain 0 or more child nodes (actions).
 
-    ref-factors-[key]-[type]
+    ref-body-[key]-[type]
 
 See [OUTDENT](#OUTDENT).
 
 Note: Build a dependency on the parent node to generate the factors and store the child nodes, but not recursively.
 
-So the use of factors in the multi-level to get the correct results.
+So the use of body in the multi-level to get the correct results.
 
 ### list
 
-The method behaves the same as the factors method, and ref generates the array element (key is the array).
+The method behaves the same as the body method, and ref generates the array element (key is the array).
 
     ref-list-[key]-[type]
 
@@ -446,30 +446,30 @@ topStmts   = *CRLF statement *(CRLF statement) *CRLF
 stmts      = OUTDENT CRLF statement *(CRLF statement)
 statement  = if-here / expression
 
-if         = "if" 1*SP ifCell-factors--if
+if         = "if" 1*SP ifCell-body--if
 ifCell     = OUTDENT- expression--test ":" *SP
-             (expression--body / stmts-factors-body) FLAG
+             (expression--body / stmts-body-body) FLAG
              [CRLF (else-here / elif-here)]
-elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
-else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
+elif       = "elif" 1*SP ifCell-body-orelse-if FLAG
+else       = "else:" *SP (expression--orelse / stmts-body-orelse) FLAG
 
 ident      = Ident-lit- DENY-keywords [Call-amend-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
 Num        = 1*DIGIT
 
-expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP
+expression = (ident / Num-lit- / Set-body- / List-body- / Dict-body- / group-alone) *WSP
 elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
-List       = "[" [elements-factors-elts FLAG] "]"
-Set        = "{" [elements-factors-elts FLAG] "}"
+List       = "[" [elements-body-elts FLAG] "]"
+Set        = "{" [elements-body-elts FLAG] "}"
 
 Dict       = "{" [pairs] "}"
 pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
-Call       = args-factors-args FLAG
+Call       = args-body-args FLAG
 args       = "()" / "(" [elements] ")"
 
 WSP    = SP / HTAB
@@ -637,7 +637,7 @@ Expression   = (Num- /
 
 group        = "(" Expression ")"
 Unary        = minus-lit-op Expression--elt
-Binary       = operator-operator-op Expression--right
+Binary       = operator-binary-op Expression--right
 
 Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)
 minus        = "-"

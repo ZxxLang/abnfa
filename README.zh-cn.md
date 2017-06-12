@@ -195,20 +195,20 @@ update      = "++" / "--"
 
     ref-infix-[key]-type
 
-该方法内部必须含有 operator 动作.
+该方法内部必须含有 binary 动作.
 
-### operator
+### binary
 
 用于二元中缀运算符. 该方法保存匹配的原始字符串.
 
-    ref-operator-key
+    ref-binary-key
 
 运算符以优先级由低到高排列, 使用纯字符串分组替代写法, 采用贪婪匹配. 示例:
 
 ```abnf
 BinaryExpr      = (
-                    operatorSymbol-operator-operator /
-                    operatorAlpha-operator-operator 1*cwsp
+                    operatorSymbol-binary-operator /
+                    operatorAlpha-binary-operator 1*cwsp
                   ) *cwsp Expression
 
 operatorSymbol  = "" /
@@ -226,21 +226,21 @@ operatorAlpha   = "or" /
 
 注意: precedence 最小值是从 1 开始的.
 
-### factors
+### body
 
 该方法先产生 factors, 匹配成功后进行构建, 可包含 0 或多个子节点(动作).
 
-    ref-factors-[key]-[type]
+    ref-body-[key]-[type]
 
 参见 [缩出插件](#OUTDENT).
 
 注意: 构建依据层级关系对父节点生成 factors 并收纳子节点, 但非递归.
 
-所以多层级时必须使用 factors 才能获得正确的结果.
+所以多层级时必须使用 body 才能获得正确的结果.
 
 ### list
 
-与 factors 方法行为一样, 并且 ref 生成数组元素(key 是数组).
+与 body 方法行为一样, 并且表示 ref 生成数组元素(key 是数组).
 
     ref-list-[key]-[type]
 
@@ -282,7 +282,7 @@ Actions 实例有几个重要属性:
 
     自顶向下进行匹配, 自底向上生成动作
     插件被执行时产生的事件保存在数组属性 events 中
-    alone, factors, list 方法触发构建
+    alone, body, list 方法触发构建
     ref-amend-key-type   方法触发构建
     匹配完成触发构建
 
@@ -450,30 +450,30 @@ topStmts   = *CRLF statement *(CRLF statement) *CRLF
 stmts      = OUTDENT CRLF statement *(CRLF statement)
 statement  = if-reset / expression
 
-if         = "if" 1*SP ifCell-factors--if
+if         = "if" 1*SP ifCell-body--if
 ifCell     = OUTDENT- expression--test ":" *SP
-             (expression--body / stmts-factors-body) FLAG
+             (expression--body / stmts-body-body) FLAG
              [CRLF (else-reset / elif-reset)]
-elif       = "elif" 1*SP ifCell-factors-orelse-if FLAG
-else       = "else:" *SP (expression--orelse / stmts-factors-orelse) FLAG
+elif       = "elif" 1*SP ifCell-body-orelse-if FLAG
+else       = "else:" *SP (expression--orelse / stmts-body-orelse) FLAG
 
 ident      = Ident-lit- DENY-keywords [Call-amend-func-]
 keywords   = "class"/ "if" / "else" / "elif"
 Ident      = ALPHA *(ALPHA / DIGIT)
 Num        = 1*DIGIT
 
-expression = (ident / Num-lit- / Set-factors- / List-factors- / Dict-factors- / group-alone) *WSP
+expression = (ident / Num-lit- / Set-body- / List-body- / Dict-body- / group-alone) *WSP
 elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]
 group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
 
-List       = "[" [elements-factors-elts FLAG] "]"
-Set        = "{" [elements-factors-elts FLAG] "}"
+List       = "[" [elements-body-elts FLAG] "]"
+Set        = "{" [elements-body-elts FLAG] "}"
 
 Dict       = "{" [pairs] "}"
 pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
 pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
 
-Call       = args-factors-args FLAG
+Call       = args-body-args FLAG
 args       = "()" / "(" [elements] ")"
 
 WSP    = SP / HTAB
@@ -640,7 +640,7 @@ Expression   = (Num- /
 
 group        = "(" Expression ")"
 Unary        = minus-lit-op Expression--elt
-Binary       = operator-operator-op Expression--right
+Binary       = operator-binary-op Expression--right
 
 Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)
 minus        = "-"

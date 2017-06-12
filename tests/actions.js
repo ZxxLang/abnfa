@@ -24,7 +24,7 @@ var grammarThousands = [
 		'SP        = %x20'
 	].join('\n'),
 	grammarActions = [
-		'action    = name--ref ["-" Action-factors-action-]',
+		'action    = name--ref ["-" Action-body-action-]',
 		'name      = raw-lit',
 		'Action    = [name--method] [',
 		'            "-" [name--key] [',
@@ -42,7 +42,7 @@ var grammarThousands = [
 		'               [Binary-infix-left-]',
 		'group        = "(" Expression ")"',
 		'Unary        = minus-lit-op Expression--elt',
-		'Binary       = operator-operator-op Expression--right',
+		'Binary       = operator-binary-op Expression--right',
 		'Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)',
 		'minus        = "-"',
 		'operator     = ("+" / "-") / ("*" / "/")',
@@ -103,7 +103,7 @@ var grammarThousands = [
 		['-1,234+5', 'Binary[Unary~left[~op"-",Num~elt"1234"],~op"+",Num~right"5"]'],
 	],
 	grammarObject = '\n\
-		first   = Number- / Object-factors-\n\
+		first   = Number- / Object-body-\n\
 		Object  = "{" [Pair- *("," Pair-)] "}"\n\
 		Pair    = 1*ALPHA-lit ":" first\n\
 		Number  = 1*DIGIT-lit\n\
