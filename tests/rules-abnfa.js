@@ -2,7 +2,7 @@ var rules,
 	test = require('./test'),
 	fs = require('fs'),
 	core = require('../lib/core'),
-	abnfraw = open('src/abnfa.abnf');
+	abnfraw = open('grammar/abnfa.abnf');
 
 
 function open(name) {
