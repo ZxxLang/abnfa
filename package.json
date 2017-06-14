@@ -1,16 +1,19 @@
 {
   "name": "abnfa",
-  "version": "0.7.5",
+  "version": "0.8.0",
   "description": "ABNF Actions syntax for directly generating an AST",
   "main": "index.js",
   "files": [
-    "index.js"
+    "bin",
+    "lib"
   ],
   "bin": {
-    "aa": "bin/run.js"
+    "aa": "bin/cli.js"
   },
   "scripts": {
-    "test": "tap tests/*.js --cov"
+    "test": "tap tests/*.js --cov",
+    "dist": "browserify index.js -o dist/abnfa.js -s ABNFA && uglifyjs dist/abnfa.js -o dist/abnfa.min.js --source-map",
+    "aa": "node ./bin/cli.js"
   },
   "repository": "git+https://github.com/ZxxLang/abnfa.git",
   "keywords": [

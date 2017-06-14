@@ -1,7 +1,7 @@
 # ABNFA
 
-ABNFA based on [ABNF][] to extend the action semantics of the reference rules
- to provide a tool chain for generating AST.
+Augmented BNF Actions(ABNFA) based on [ABNF][], extend the action semantics of
+ the reference rules to provide a tool chain for generating AST.
 
 Original definition:
 

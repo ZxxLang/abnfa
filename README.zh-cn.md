@@ -1,6 +1,6 @@
 # ABNFA
 
-ABNFA 基于 [ABNF][] 对引用规则扩展动作语义, 为生成 AST 提供工具链.
+Augmented BNF Actions(ABNFA) 基于 [ABNF][] 扩展引用动作, 为生成 AST 提供工具链.
 
 原定义:
 

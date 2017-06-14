@@ -1,0 +1,545 @@
+; ZxxLang grammar
+first       = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-NON ACTIONS-RAW
+              ACTIONS-MUST ACTIONS-FLAG ACTIONS-SWAP ACTIONS-POP
+              grammar
+
+grammar     = top *(CRLF top) [CRLF]
+
+top         = use-reset-decls /
+              let-reset-decls /
+              def-reset-decls /
+              fun-reset-decls /
+              comment-note-comments-Comment
+
+do          = [""]
+
+; comments and white-spaces
+
+comment     = *(SP / HTAB / UVCHAR)
+endComment  = ";;" comment
+lineComment = " " comment
+backslash   = "\"
+
+tail        = endComment-note-comments-Comment
+head        = backslash-leaf DENY-backslash /
+              lineComment-note-comments-Comment
+
+DOC         = tail FLAG-doc *(CRLF head) /
+              1*(CRLF head FLAG-doc)
+
+WSP         = *SP [CRLF]
+CWSP        = 1*SP [tail] *(CRLF [head]) /
+              tail *(CRLF [head]) /
+              1*(CRLF [head])
+
+SEMICWSP    = CWSP / *SP  ";" [CWSP]
+
+SEMI        = ";"
+
+SEMIDOC     = *SP ( [DOC] CRLF / ";" *SP [DOC] [CRLF])
+
+cwsp        = *SP [tail] *(CRLF [head])
+              ; cwsp must be in OUTDENT
+
+; core
+
+DISCARD     = "_"
+
+KEYWORDS    = "un" / "is" / "isnt" / "in" / "notin" / "and" / "or" /
+
+              "use" / "def" / "fun" / "let" /
+              "echo" / "defer" / "if" / "else" / "for" / "of" /
+              "break" / "continue" / "throw" / "catch" / "out" / "yield"
+
+CONSTS      = "null" / "true" / "false" / "NaN" / "Infinity"
+
+IOTA        = "iota"
+SELF        = "self"
+SUPER       = "super"
+VOID        = "void"
+IV          = "iota" / "void"
+SIV         = "self" / "iota" / "void" / "super"
+
+Discard     = DISCARD---Discard
+
+Member      = ident-leaf--Member
+
+; Generic Identifier
+
+Ident       = ident-leaf--Ident NON-KEYWORDS [
+                RAW-IS-null do-amend--Null /
+                RAW-IS-true do-amend--Bool /
+                RAW-IS-false do-amend--Bool /
+
+                RAW-IS-void do-amend--Void /
+                RAW-IS-self do-amend--Self /
+                RAW-IS-super do-amend--Super /
+                RAW-IS-iota do-amend--Iota /
+
+                RAW-IS-NaN do-amend--Float /
+                RAW-IS-Infinity do-amend--Float
+              ]
+
+
+gid         = ident-leaf--Ident DENY-KEYWORDS-CONSTS-SIV
+
+global      = "." gid FLAG-w / "-" gid FLAG-r / gid
+
+ident       = IDENTRUNE *(["-"] 1*(IDENTRUNE / DIGIT ))
+
+selector    = Ident ["." Selector-amend-left-]
+Selector    = Ident--right DENY-CONSTS-SIV
+
+; key of KeyValue
+
+key         = String /
+              Ident DENY-IV ["." Selector-amend-left-] /
+              Float /
+              Num
+
+; literal
+
+literal     = String /
+              Float /
+              Template /
+              Datetime- /
+              Num
+
+
+unescaped   = HTAB / %x20-21 / %x23-26 / %x28-5B / %x5D-5F / %x61-7E /
+              UVCHARBEYONDASCII / UWSPBEYONDASCII
+
+escaped     = %x5C (
+                CRLF /          ;      trim indentation U+0009
+                %x22 /          ; "    quotation mark   U+0022
+                %x27 /          ; '    quotation mark   U+0027
+                %x5C /          ; \    reverse solidus  U+005C
+                %x60 /          ; `    backquote        U+0060
+                %x62 /          ; b    backspace        U+0008
+                %x66 /          ; f    form feed        U+000C
+                %x6E /          ; n    line feed        U+000A
+                %x72 /          ; r    carriage return  U+000D
+                %x74 /          ; t    tab              U+0009
+                %x75 4HEXDIG    ; uXXXX                 U+XXXX
+              )
+
+String      = %x27 MUST quotestr-alone %x27 /
+              %x22 MUST dquotestr-alone %x22 FLAG-x22
+quotestr    = OUTDENT-0 quoteraw-leaf--String
+dquotestr   = OUTDENT-0 dquoteraw-leaf--String
+quoteraw    = *(%x22 / %x60 / unescaped / escaped / CRLF)
+dquoteraw   = *(%x27 / %x60 / unescaped / escaped / CRLF)
+
+Template    = %x60 MUST template-alone %x60
+template    = OUTDENT-0 templateraw-leaf--Template
+templateraw = *(%x22 / %x27 / unescaped / escaped / CRLF)
+
+negative    = "-"
+
+Num         = xNum-leaf--Num / num---Num
+num         = [negative-lit] d4123 [E-lit MUST d4123]
+
+xNum        = "0b" 1*64BIT / ["-"] "0x" 1*16HEXDIG
+
+Float       = floatBin-leaf--Float /
+              floatConst---Float /
+              floatNums---Float
+
+floatConst  = [negative-lit] ident-lit (
+                RAW-IS-NaN / RAW-IS--Infinity /
+                RAW-IS--NaN / RAW-IS-Infinity
+              )
+
+floatNums   = [negative-lit] d4123 DOTDOT-ifn
+              DOT-lit MUST d4321 [E-lit MUST d4123]
+
+floatBin    = "0f" 8HEXDIG [8HEXDIG]
+E           = ("e" / "E") ["-" / "+"]
+
+d4123       = d4s-lit / d123-lit *("'" d3-lit)
+
+d4321       = d4s-lit /
+              d3-lit *("'" d3-lit) ["'" d12-lit] /
+              d12-lit
+
+d12         = 1*2DIGIT
+d123        = 1*3DIGIT
+d2          = 2DIGIT
+d3          = 3DIGIT
+d4          = 4DIGIT
+d4s         = 4*DIGIT
+
+Datetime   = d4-leaf-year ["-"] [
+                d2-leaf-month ["-"] [ d2-leaf-day ]
+              ] "T" MUST [
+                d2-leaf-hour [":"] [
+                  d2-leaf-minute [":"] [d2-leaf-second]
+                ]
+              ] ["." nano-leaf-nano ] [zone-leaf-zone]
+
+nano       = 1*9DIGIT
+zone       = "Z" / ("+" / "-") 2DIGIT [[":"] 2DIGIT]
+
+; top-level decls
+
+use         = "use" (1*SP / 1*CRLF HTAB) MUST Use-list-
+Use         = pkgs-list-body
+
+pkgs        = OUTDENT Package-
+              *( cwsp Package- )     cwsp
+
+Package     = String--path [
+                1*SP [gid--name / Discard--name]
+              ]
+
+;;
+let         = "let" (1*SP / 1*CRLF HTAB) MUST Let-list-
+Let         = inits-list-body
+
+inits       = OUTDENT- init-body--Assign
+              *(CRLF init-body--Assign)
+
+init        = OUTDENT initLeft-list-left EQ-lit-op WSP
+              expressions-list-right
+
+initLeft    = OUTDENT- (Discard / global)
+              *("," MUST *SP[DOC][CRLF] (Discard / global))
+              *SP[DOC]
+
+EQ          = "="
+
+;;
+def         = "def" 1*SP MUST Def-list-
+Def         = OUTDENT global--name
+              (
+                1*SP selector--origin
+                *SP [":" *SP MUST impls-list--impls *SP] [DOC] /
+                *SP [":" *SP MUST impls-list--impls *SP] [DOC]
+                [CRLF fields-list-body]
+              )
+
+impls       = selector *(*SP "," *SP MUST selector)
+
+fields      = OUTDENT- Field-body- [*SP DOC]
+              *( CRLF  Field-body- [*SP DOC] )
+
+Field       = OUTDENT ( selector--type / Composite--type- ) MUST
+              [1*SP names-list-names]
+
+names       = OUTDENT field MUST
+              *(*SP "," *SP MUST [DOC] [CRLF] field) [DOC]
+
+field       = "." MUST Member FLAG-w /
+              "-" MUST Member FLAG-r /
+              Member / Discard
+
+;;
+fun         = "fun" 1*SP MUST Fun-list-
+Fun         = OUTDENT global--name [
+                "." ident-leaf-left-Ident SWAP /
+                *SP "'" overload-leaf-overload "'" *SP /
+                *SP '"' overload-leaf-overload '"' *SP
+              ]
+
+              "(" [CRLF] [
+                "out" 1*SP Params-list-results /
+                Params-list-params [SEMIDOC "out" 1*SP Params-list-results] ] [CRLF] ")"
+
+              [DOC] [CRLF stmts-list-body]
+
+overload    = "[x]" /
+              "[...]" / "[..]" /
+              "--" / "++" / "-" /
+              "un" / "~" /
+              "..." / ".." / "." /
+              "and" / "or" / "in" / "notin" / "isnt" / "is" /
+              operator /
+              "==" / "<>" / "<=" / ">=" / "<" / ">" / "≠" / "≤" / "≥" / "≈" /
+              ">>>" / "<<" / ">>" / "&" / "^" / "|" /
+              "//" / "*" / "/" / "%" / "+"
+
+Params      = OUTDENT- Param-body- *(SEMIDOC Param-body- ) *SP [DOC]
+Param       = OUTDENT ParamType--type [1*SP ParamNames-list-names]
+
+ParamType   = Ident DENY-CONSTS-IV ["." DENY-SELF-SUPER Selector-amend-left-] /
+              compType
+
+ParamName   = OUTDENT ( Ident DENY-CONSTS-SIV / Discard ) *SP [DOC]
+
+ParamNames  = OUTDENT ( Ident DENY-CONSTS-SIV / Discard )
+              *(*SP "," *SP MUST [DOC] [CRLF]
+                ( Ident DENY-CONSTS-SIV / Discard )
+              ) *SP [DOC]
+
+; statements
+
+statement = Discard assign-amend-left /
+            UpdatePrefix /
+            ident-leaf--Ident MUST (
+              builtin-reset /
+              DENY-KEYWORDS-CONSTS-IV [
+                RAW-IS-self do-amend--Self /
+                RAW-IS-super do-amend--Super
+              ] (
+                  Chain-amend-first- [Update-amend-elt- / assign-amend-left ] /
+                  Update-amend-elt- /
+                  assign-amend-left
+              )
+            )
+
+stmts     = OUTDENT- statement *(SEMICWSP statement) cwsp
+
+semiStmts = ";" SEMI-ifn *SP OUTDENT [statement *(SEMICWSP statement)] cwsp /
+            OUTDENT [tail] 1*(CRLF [head]) statement *(SEMICWSP statement) cwsp
+
+elseStmts = OUTDENT cwsp statement *(SEMICWSP statement) cwsp
+
+
+builtin   = RAW-IS-if 1*SP POP If-body- /
+            RAW-IS-for 1*SP POP For-body-  /
+            RAW-IS-out POP Out-body- /
+            RAW-IS-echo 1*SP POP Echo-body- /
+            RAW-IS-catch 1*SP POP Catch-body- /
+            RAW-IS-throw 1*SP POP Throw-body- /
+            RAW-IS-break POP do---Break CWSP/
+            RAW-IS-continue POP do---Continue CWSP/
+            RAW-IS-yield POP Yield-body- /
+            RAW-IS-defer ( 1*SP / 1*CRLF) POP Defer-body-
+
+Echo      = expressions-list-elts
+Out       = [1*SP expressions-list-elts]
+Yield     = [1*SP expressions-list-elts]
+Throw     = expressions-list-args
+Catch     = OUTDENT expression---error CRLF stmts-list-body
+Defer     = stmts-list-body
+If        = OUTDENT- expression--test [*SP "," *SP expression--reply SWAP ]
+            *SP ( cases-list-cases / caseBody-list-cases )
+            [Else]
+
+cases     = OUTDENT- ofCase-reset *(CRLF ofCase-reset)
+ofCase    = "of" 1*SP case-body--Case
+case      = OUTDENT set-list-set *SP semiStmts-list-body
+
+caseBody  = Case-body-
+Case      = semiStmts-list-body
+
+For       = OUTDENT- expression--factor (
+              *SP "," MUST *SP expression--index SWAP of /
+              [of]
+            ) *SP [semiStmts-list-body] [Else]
+
+of        = 1*SP "of" 1*SP set-list-set
+set       = expression *("," MUST *SP expression)
+
+Else      = CRLF ident-leaf RAW-IS-else POP MUST elseStmts-list-else
+
+assign    = Assign-body-
+Assign    = OUTDENT leftMore-list-left operator-lit-op
+            MUST WSP expressions-list-right
+
+leftMore  = OUTDENT- *(*SP "," MUST cwsp receiver) cwsp
+
+receiver  = Discard /
+            ident-leaf--Ident DENY-KEYWORDS-CONSTS-IV [ Chain-amend-first- ]
+
+; the expression in the function
+
+expressions = OUTDENT- expression *("," MUST cwsp expression)
+              *SP [tail] *(CRLF head)
+
+expression  = (
+                (
+                  UpdatePrefix /
+                  "(" group-alone ")" /
+                  Ident [ NON-CONSTS-IV Chain-amend-first-] /
+                  Composite- /
+                ) [ NON-CONSTS-IV Update-amend-elt-] /
+                Unary-prefix- /
+                literal
+              )
+              [ Range-infix-first- / Binary-infix-left- ]
+
+group       = OUTDENT- MUST *SP [CRLF] expression *SP [CRLF]
+
+Update      = update-leaf-op
+
+UpdatePrefix  = update-leaf MUST UpdateElt-amend-op-Update FLAG-prefix
+UpdateElt     = Ident--elt DENY-CONSTS-VOID [Chain-amend-first-]
+
+Unary       = (prefix-leaf-op / Prefix-leaf-op 1*SP) expression--elt
+
+Binary      = (
+                 *SP infix-binary-op cwsp /
+                1*SP Infix-binary-op CWSP
+              ) MUST expression--right
+
+Range       = *SP range-binary-op MUST expression--last
+
+; chain
+
+Chain       = simpChains-list-chains
+
+simpChains  = OUTDENT- 1*simpChain
+
+simpChain   = "." DOT-ifn MUST Dot-body- /
+              "(" MUST WSP (Call-body- WSP ")" / do---Call ")" ) /
+              "[" MUST WSP Lookup-body- WSP "]"
+
+Dot         = OUTDENT- MUST cwsp Member--member
+
+Call        = args-list-args
+args        = OUTDENT- *SP [CRLF] expression
+              *(*SP "," cwsp expression)
+              *SP [","] cwsp
+
+Lookup      = OUTDENT expression--factor cwsp
+
+; type or val of list and dict
+
+Composite   = dictType-reset [ "{" Dict-body-val- "}" ] /
+              listType-reset [ "[" List-body-val- "]" ]
+
+compType    = typeDict-reset / typeList-reset
+compTypes   = selector / compType
+typeDict    = "{}" TypeDict-body-type-DictType
+TypeDict    = compTypes--spec
+typeList    = "[" TypeList-body-type-ListType
+TypeList    = [ DIGITS-leaf-growth-Num ] "]" compTypes--spec
+
+
+dictType    = "{}" DictType-body-type-
+DictType    = compSpec--spec
+
+Dict        = dicts-list-elts
+dicts       = OUTDENT- cwsp [ KeyValue-body-  *("," cwsp KeyValue-body- ) *SP [","] cwsp ]
+
+KeyValue    = OUTDENT key--key MUST ([":"] *SP / 1*SP) compValue--val
+
+listType    = "[" ListType-body-type-
+ListType    = [ DIGITS-leaf-growth-Num ] "]" compSpec--spec
+
+List        = lists-list-elts
+lists       = OUTDENT- cwsp [ compValue  *("," cwsp compValue ) *SP [","] cwsp ]
+
+compSpec    = selector / Composite-
+compValue   = expression / "{" Dict-body- "}" / "[" List-body- "]"
+
+; operators
+
+prefix      = "~"/ "-"
+Prefix      = "un"
+
+update      = "--" / "++"
+
+
+Infix       = "or" /
+              "and" /
+              ("in" / "notin") /
+              ("is" / "isnt")
+
+infix       = "" /
+              "" /
+              "" /
+              "" /
+              ("==" / "<>" / "<=" / ">=" / "<" / ">" / "≠" / "≤" / "≥" / "≈") /
+              "" /
+              (">>>=" / "<<=" / ">>=" / "&=" / "^=" / "|=") /
+              ("+=" / "-=") /
+              ("//=" / "*=" / "/=" / "%=") /
+              (">>>" / "<<" / ">>" / "&" / "^" / "|") /
+              ("+" / "-" ) /
+              ("//" / "*" / "/" / "%")
+
+range       = "" /
+              "" /
+              "" /
+              "" /
+              "" /
+              ("..." / "..")
+
+operator   = "=" /
+             ">>>=" / "<<=" / ">>=" / "&=" / "^=" / "|=" /
+             "+=" / "-=" /
+             "//=" / "*=" / "/=" / "%="
+
+
+; core
+
+HTAB    =  %x09
+SP      =  %x20
+DOT     =  %x2E
+DOTDOT  =  %x2E.2E
+QUOTE   =  %x27 / %x22
+BIT     =  %x30-31
+DIGIT   =  %x30-39
+DIGITS  =  1*DIGIT
+ALPHA   =  %x41-5A / %x61-7A
+HEXDIG  =  DIGIT / %x41-46 / %x61-66
+
+UVCHAR  =  %x21-7E / UVCHARBEYONDASCII / UWSPBEYONDASCII
+
+UNICODE = <%x0000-D7FF / %xE000-10FFFF>
+
+UVCHARBEYONDBMP   = %x10000-1FFFD / %x20000-2FFFD /
+                    %x30000-3FFFD / %x40000-4FFFD /
+                    %x50000-5FFFD / %x60000-6FFFD /
+                    %x70000-7FFFD / %x80000-8FFFD /
+                    %x90000-9FFFD / %xA0000-AFFFD /
+                    %xB0000-BFFFD / %xC0000-CFFFD /
+                    %xD0000-DFFFD / %xE0000-EFFFD
+
+UVCHARBEYONDASCII = %x00A1-167F / %x1681-1FFF /
+                    %x200B-2027 / %x202A-202E /
+                    %x2030-205E / %x2060-2FFF /
+                    %x3001-D7FF /
+                    %xF900-FDCF / %xFDF0-FFFD /
+                    UVCHARBEYONDBMP
+
+UWSPBEYONDASCII   = %x00A0 / %x1680 / %x2000-200A /
+                    %x202F / %x205F / %x3000
+
+; http://unicode.org/charts/charindex.html
+; http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+; https://unicode-table.com/
+; https://codepoints.net
+; https://graphemica.com/
+
+IDENTRUNE = %x41-5A / %x61-7A /
+            %x0370-0373 / %x0376-0377 /
+            %x037F / %x0386 / %x0388-038A /
+            %x038C / %x038E-03A1 / %x03A3-03FF /      ; Greek and Coptic
+            %x0400-0481 / %x048A-0527 / %x052E-052F / ; Cyrillic
+            %x0531-0556 / %x0561-0587 /               ; Armenian
+            %x05D0-05EA /                             ; Hebrew
+            %x0620-063F / %x0641-064A / %x066E-06D3 / ; Arabic
+            %x0710-072F / %x074D-074F /               ; Syriac
+            %x0750-077F /                             ; Arabic
+            %x0780-07B1 /                             ; Thaana
+            %x07CA-07EA /                             ; Nko
+            %x0800-0815 /                             ; Samaritan
+            %x0840-0858 /                             ; Mandaic
+            %x08A0-08B4 /                             ; Arabic
+            %x0904-0939 / %x0958-0961 / %x0972-097F / ; Devanagari
+            %x0985-098C / %x098F-0990 / %x0993-09A8 /
+            %x09AA-09B0 / %x09B2 / %x09B6-09B9 /
+            %x09CE / %x09DC-09DD / %x09DF-09E1 /
+            %x09F0-09F1 /                              ; Bengali
+            %x0A05-0A0A / %x0A0F-0A10 / %x0A13-0A28 /
+            %x0A2A-0A30 / %x0A32-0A33 / %x0A35-0A36 /
+            %x0A38-0A39 / %x0A59-0A5C / %x0A5E /       ; Gurmukhi
+            %x0A85-0A8C /                              ; Gujarati
+
+            %x2E80-2E99 / %x2E9B-2EF3 / %x2F00-2FD5 / ; CJK
+            %x3041-3096 / %x309D-309F /               ; HIRAGANA
+            %x30A0-30FA /                             ; Katakana
+            %x3105-312D /                             ; BOPOMOFO
+            %x3131-3163 / %x3165-318E /               ; HANGUL
+            %x31A0-31BA /                             ; BOPOMOFO
+            %x31F0-31FF /                             ; Katakana
+            %x4E00-9FC0 /                             ; CJK Unified
+            %xA000-A48C /                             ; Yi Syllables
+            %xA500-A62B                               ; Vai
+
+
+
+

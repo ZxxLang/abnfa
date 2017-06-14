@@ -1,0 +1,51 @@
+Usage:
+
+  aa [options] <grammar> [source]
+
+Parsing grammar, matching source or generating AST.
+
+  grammar         grammar.abnf | rules.json | -
+                  To parse grammar data form stdin, specify "-" as a grammar,
+                  until type "Ctrl+D".
+
+  source          filename | stdin
+                  To match source data form stdin, until type "Ctrl+D"
+
+Options:
+
+  -h --help                 print this thing you're looking at
+
+  -v --version              show the version of this program
+
+  -j --json                 output JSON format
+
+  -a --ason                 output ASON format, if the source is specified
+
+  -o <file> --output <file>
+  -o=<file> --output=<file> output format by extension
+                            If unspecified, aa prints to stdout.
+
+  -i --indent               Indented output with 4 spaces
+
+Examples:
+
+  aa grammar.abnf
+  aa grammar.abnf -o
+  aa grammar.abnf -o rules.json
+  aa grammar.abnf -o=rules.json
+
+  aa -orules.json grammar.abnf
+  aa -o=rules.json grammar.abnf
+
+  aa grammar.abnf source.js -o
+  aa grammar.abnf source.js -o js-ast.ason
+  aa grammar.abnf source.js -o js-ast.json
+
+  aa rules.json source.js -o
+  aa rules.json source.js -o js-ast.ason
+  aa rules.json source.js -o js-ast.json
+
+Repository:
+
+  [Augmented BNF Actions](https://github.com/ZxxLang/abnfa)
+
