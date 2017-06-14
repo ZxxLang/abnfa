@@ -1,6 +1,6 @@
 {
   "name": "abnfa",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "ABNF Actions syntax for directly generating an AST",
   "main": "index.js",
   "files": [
