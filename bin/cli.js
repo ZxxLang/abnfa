@@ -95,6 +95,9 @@ function main() {
 		}
 	}
 
+	if(!opts.grammar)
+		return useage()
+
 	if (opts.grammar == '-')
 		return reader('grammar')
 			.on('line', function(line) {
