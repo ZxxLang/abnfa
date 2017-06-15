@@ -38,7 +38,49 @@ action:
   type: String
 ```
 
-The structure contains information about how to generate the AST node object, so the extension is named Actions.
+The structure contains information about how to generate the AST node object,
+ so the extension is named Actions.
+
+## Install
+
+```
+$ npm install abnfa
+```
+
+## Usage
+
+```js
+const aa = require('abnfa');
+
+const grammar = `
+first       = allPlugins rules-leaf-
+allPlugins  = ACTIONS-CRLF ACTIONS-DENY ACTIONS-MUST ACTIONS-FLAG
+              ACTIONS-SWAP ACTIONS-RAW  ACTIONS-NON  ACTIONS-POP
+              ACTIONS-OUTDENT
+
+rules       = 'typing the rules'
+`
+
+var rules = aa.rules(grammar);
+//=== aa.tokenize(grammar, aa.Entries, aa.Rules)
+
+if (rules instanceof Error) throw rules;
+
+var a = new aa.Actions(rules);
+// or aa.tokenize(grammar, aa.Entries, aa.Rules, aa.Actions)
+if (a instanceof Error) throw a;
+
+var aat = a.parse('typing the source');
+if (aat instanceof Error) throw aat;
+
+console.log(aa.ASON.serialize(aat))
+```
+
+## Cli
+
+```shell
+$ aa
+```
 
 # Specifications
 
@@ -50,20 +92,24 @@ The structure contains information about how to generate the AST node object, so
 6. The `tail` stored after the `action.ref` string
 7. The action with `method` or `key` or `type` produces Action object
 
-Equivalent shorthand format: ends with '-', indicating the same name as type and ref.
+Equivalent shorthand format: ends with '-'
 
     ref-                   === ref---ref
     ref-method-            === ref-method--ref
     ref-method-key-        === ref-method-key-ref
     ref-method-key-more-   === ref-method-key-ref-more
 
-An array of actions is generated after the final match of the input source, which is called Abstract Actions Tree (AAT).
+An array of actions is generated after the final match of the input source,
+ which is called Abstract Actions Tree (AAT).
 
-The AAT element is the action object and contains information that generates the AST node.
-In the following, the word `action 'represents the element of the action array, and` node' means the AST node.
+AAT element is an Action object, comprising information for generating AST node.
+
+In the following
+
+  1. action represents an Action object
+  2. node   represents an AST node
 
 Action object structure:
-
 
 ```yaml
 Action:
@@ -92,9 +138,29 @@ The structure is very close to AST, but the attribute is inside the factors.
 
 ## methods
 
-This section details the available methods and the combability with key and type.
+Summary of the available methods:
 
-In all methods, only `lit`, `leaf`, `note` and `precedence` has the ability to extract the matching original string.
+1. Support extract the original string match
+    `lit`, `leaf`, `note`, `binary`
+2. Save the original string to the raw attribute
+    `lit`, `leaf`, `note`
+3. Direct build the factors attribute
+    `alone`, `body`, `list`
+4. Must be used in combination
+    `infix`, `binary`
+5. Modifying factors element order
+    `amend`, `prefix`, `infix`
+6. Must be conjunction with type
+    `binary`, `reset`, `ifn`
+7. Can not be used in conjunction with type
+    `binary`, `reset`, `ifn`
+8. Must be conjunction with key
+    `binary`
+9. Can not be used in conjunction with type
+    `ifn`
+
+In all methods, only `lit`, `leaf`, `note` and `binary` has the ability to
+ extract the matching original string.
 The extracted string is only stored in the raw attribute of the leaf node.
 
 ### lit
@@ -142,8 +208,8 @@ Note: In order to correctly calculate the operator, you must use this method wit
 Does not generate an action, Reset the first action.key.
 In fact 'to' is always replaced by an empty string.
 
-    ref--key
-    ref-to-key
+    ref--key-[type]
+    ref-to-key-[type]
 
 ### reset
 
@@ -158,6 +224,7 @@ See [if-here](#OUTDENT)
 
 Exchange the location and key with the previous action.
 
+    ref-amend-key       change key  only
     ref-amend--type     change type only
     ref-amend-key-type  exchange key only
 

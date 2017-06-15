@@ -126,7 +126,7 @@ function run() {
 	var results,
 		actions,
 		rules = grammar && grammar[0] != '{' &&
-		core.tokenize(grammar, core.Entries, core.Rules) || JSON.parse(grammar);
+		core.rules(grammar) || JSON.parse(grammar);
 
 	if (rules instanceof Error) return useage(1, rules.message)
 

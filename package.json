@@ -1,6 +1,6 @@
 {
   "name": "abnfa",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "ABNF Actions syntax for directly generating an AST",
   "main": "index.js",
   "files": [
@@ -20,7 +20,8 @@
     "ABNF",
     "AST",
     "parser",
-    "parse"
+    "parse",
+    "cli"
   ],
   "author": "YU HengChun",
   "license": "BSD-2-Clause",

@@ -39,6 +39,47 @@ action:
 
 该结构包含如何生成 AST 节点对象的信息, 所以该扩展命名为 Actions.
 
+## Install
+
+```
+$ npm install abnfa
+```
+
+## Usage
+
+```js
+const aa = require('abnfa');
+
+const grammar = `
+first       = allPlugins rules-leaf-
+allPlugins  = ACTIONS-CRLF ACTIONS-DENY ACTIONS-MUST ACTIONS-FLAG
+              ACTIONS-SWAP ACTIONS-RAW  ACTIONS-NON  ACTIONS-POP
+              ACTIONS-OUTDENT
+
+rules       = 'typing the rules'
+`
+
+var rules = aa.rules(grammar);
+//=== aa.tokenize(grammar, aa.Entries, aa.Rules)
+
+if (rules instanceof Error) throw rules;
+
+var a = new aa.Actions(rules);
+// or aa.tokenize(grammar, aa.Entries, aa.Rules, aa.Actions)
+if (a instanceof Error) throw a;
+
+var aat = a.parse('typing the source');
+if (aat instanceof Error) throw aat;
+
+console.log(aa.ASON.serialize(aat))
+```
+
+## Cli
+
+```shell
+$ aa
+```
+
 # Specifications
 
 1. 大小写敏感
@@ -97,11 +138,27 @@ Action:
 
 ## methods
 
-方法用来描述如何生成动作, 以及动作间的关系.
+可以方法汇总:
 
-本节详述可用的方法以及与 key, type 的可组合性.
+1. 支持提取匹配的原始字符串的
+    `lit`, `leaf`, `note`, `binary`
+2. 保存原始字符串到 raw 属性的
+    `lit`, `leaf`, `note`
+3. 直接构建 factors 属性的
+    `alone`, `body`, `list`
+4. 必须结合使用的
+    `infix`, `binary`
+5. 修改 factors 元素顺序的
+    `infix`, `prefix`, `amend`
+6. 必须与 type 联用的
+    `infix`, `prefix`
+7. 不能与 type 联用的
+    `binary`, `ifn`, `reset`
+8. 必须与 key 联用的
+    `binary`
+9. 不能与 key 联用的
+    `ifn`
 
-所有方法中 lit, leaf, note, precedence 具有提取匹配的原始字符串能力.
 被提取的字符串仅保存在叶子节点的 raw 属性中.
 
 ### lit
@@ -152,8 +209,8 @@ d4         = 4*DIGIT
 
 事实上工具链总是把 'to' 替换为空字符串
 
-    ref--key
-    ref-to-key
+    ref--key-[type]
+    ref-to-key-[type]
 
 ### reset
 
