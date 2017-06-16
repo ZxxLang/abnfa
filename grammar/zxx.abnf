@@ -264,8 +264,6 @@ Param       = OUTDENT ParamType--type [1*SP ParamNames-list-names]
 ParamType   = Ident DENY-CONSTS-IV ["." DENY-SELF-SUPER Selector-amend-left-] /
               compType
 
-ParamName   = OUTDENT ( Ident DENY-CONSTS-SIV / Discard ) *SP [DOC]
-
 ParamNames  = OUTDENT ( Ident DENY-CONSTS-SIV / Discard )
               *(*SP "," *SP MUST [DOC] [CRLF]
                 ( Ident DENY-CONSTS-SIV / Discard )
@@ -469,7 +467,6 @@ HTAB    =  %x09
 SP      =  %x20
 DOT     =  %x2E
 DOTDOT  =  %x2E.2E
-QUOTE   =  %x27 / %x22
 BIT     =  %x30-31
 DIGIT   =  %x30-39
 DIGITS  =  1*DIGIT

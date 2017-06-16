@@ -589,6 +589,8 @@ DIGIT      = %x30-39
 
 期望前一个动作的 raw 属性值不等于 rulename 提供的可选字符串.
 
+    NON-rulename-[rulename]-[rulename]
+
 该插件与 DENY 的区别:
 
   1. 允许 raw 为 null

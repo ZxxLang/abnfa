@@ -95,7 +95,7 @@ function main() {
 		}
 	}
 
-	if(!opts.grammar)
+	if (!opts.grammar)
 		return useage()
 
 	if (opts.grammar == '-')
@@ -162,8 +162,9 @@ function output(data) {
 	}
 }
 
-function toJson(actions) {
-	return JSON.stringify(core.ASON.clean(actions), null, indent)
+function toJson(x) {
+	return JSON.stringify(
+		Array.isArray(x) && core.ASON.clean(x) || x, null, indent)
 }
 
 function version() {

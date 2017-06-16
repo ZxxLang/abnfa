@@ -1,10 +1,12 @@
-var tap = require('tap');
-var yaml = require('js-yaml');
+var yaml,
+	tap = require('tap');
 
 if (module === require.main) {
-	tap.pass('ok')
+	tap.pass()
 	return
 }
+
+yaml = require('js-yaml');
 
 tap.Test.prototype.errify = function(err, extra) {
 	if (err instanceof Error) this.error(err, Array.isArray(extra) && extra || [extra])

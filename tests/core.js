@@ -1,5 +1,4 @@
-var
-	test = require('./test'),
+var test = require('./test'),
 	core = require('../lib/core');
 
 test('retrans reduce', function(t) {
@@ -12,7 +11,7 @@ test('retrans reduce', function(t) {
 })
 
 test('retrans transform', function(t) {
-	var form = {};
+	var form = { };
 	form.retrans = function(s) {
 		return s != null && s + s || null
 	}
@@ -189,7 +188,8 @@ test('rule reduce', function(t) {
 });
 
 function rules(tests) {
-	var expected, t = this;
+	var expected,
+		t = this;
 	tests.forEach(function(s) {
 		var cr = new core.Rules()
 		var entries = core.tokenize(s, core.Entries)
