@@ -1,0 +1,2340 @@
+{
+    "first": "rules",
+    "defs": {
+        "rules": {
+            "min": 1,
+            "max": -1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 5,
+                    "ref": "WSPS"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "Comment"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "P",
+                    "token": 1,
+                    "ref": "NL",
+                    "method": ""
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "plugins",
+                    "type": "plugins",
+                    "method": "to",
+                    "key": "plugins"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "tokenize",
+                    "type": "tokenize",
+                    "method": "to",
+                    "key": "tokenize"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "Rule",
+                    "type": "Rule",
+                    "method": "value",
+                    "key": "defs"
+                }
+            ]
+        },
+        "WSPS": {
+            "min": 1,
+            "max": -1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "SP"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "HTAB"
+                }
+            ]
+        },
+        "comment": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 0,
+                    "raw": ";"
+                },
+                {
+                    "min": 0,
+                    "max": -1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "SP"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "HTAB"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "VCHAR"
+                        }
+                    ]
+                }
+            ]
+        },
+        "name": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "ALPHA"
+                },
+                {
+                    "min": 0,
+                    "max": -1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "ALPHA"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "DIGIT"
+                        }
+                    ]
+                }
+            ]
+        },
+        "action": {
+            "min": 1,
+            "max": -1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 0,
+                    "raw": "-"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "ALPHA"
+                        },
+                        {
+                            "min": 0,
+                            "max": -1,
+                            "kind": "A",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "r",
+                                    "token": 0,
+                                    "ref": "ALPHA"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "r",
+                                    "token": 0,
+                                    "ref": "DIGIT"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "qstring": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": -1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 32,
+                            "last": 38,
+                            "token": 0
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 40,
+                            "last": 126,
+                            "token": 0
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "P",
+                    "token": 3,
+                    "ref": "FAIL",
+                    "method": "-invalid-quote-string"
+                }
+            ]
+        },
+        "dstring": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": -1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 32,
+                            "last": 33,
+                            "token": 0
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 35,
+                            "last": 126,
+                            "token": 0
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "P",
+                    "token": 3,
+                    "ref": "FAIL",
+                    "method": "-invalid-double-quote-string"
+                }
+            ]
+        },
+        "prose": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": -1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 32,
+                            "last": 61,
+                            "token": 0
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "R",
+                            "first": 63,
+                            "last": 126,
+                            "token": 0
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "P",
+                    "token": 3,
+                    "ref": "FAIL",
+                    "method": "-invalid-prose"
+                }
+            ]
+        },
+        "bin": {
+            "min": 1,
+            "max": -1,
+            "kind": "r",
+            "token": 0,
+            "ref": "BIT"
+        },
+        "dec": {
+            "min": 1,
+            "max": -1,
+            "kind": "r",
+            "token": 0,
+            "ref": "DIGIT"
+        },
+        "hex": {
+            "min": 1,
+            "max": -1,
+            "kind": "r",
+            "token": 0,
+            "ref": "HEXDIG"
+        },
+        "cwsp": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 5,
+                    "ref": "WSPS"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "Comment"
+                },
+                {
+                    "min": 0,
+                    "max": -1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "P",
+                            "token": 1,
+                            "ref": "NL",
+                            "method": ""
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 5,
+                            "ref": "WSPS"
+                        },
+                        {
+                            "min": 0,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "Comment"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Comment": {
+            "min": 1,
+            "max": 1,
+            "kind": "a",
+            "token": 33,
+            "ref": "comment",
+            "method": "push",
+            "key": "comments",
+            "type": "Comment"
+        },
+        "plugins": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 0,
+                    "raw": "PLUGINS"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 0,
+                                    "max": 1,
+                                    "kind": "r",
+                                    "token": 5,
+                                    "ref": "WSPS"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 7,
+                                    "raw": "="
+                                },
+                                {
+                                    "min": 1,
+                                    "max": -1,
+                                    "kind": "C",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "r",
+                                            "token": 0,
+                                            "ref": "cwsp"
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "a",
+                                            "token": 0,
+                                            "ref": "Plugin",
+                                            "type": "Plugin"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "r",
+                                    "token": 0,
+                                    "ref": "cwsp"
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "P",
+                            "token": 3,
+                            "ref": "FAIL",
+                            "method": "-invalid-plugin"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Plugin": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 31,
+                    "ref": "name",
+                    "method": "key"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 32,
+                    "ref": "action",
+                    "method": "to",
+                    "key": "action"
+                }
+            ]
+        },
+        "tokenize": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 0,
+                    "raw": "TOKENIZE"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 5,
+                    "ref": "WSPS"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 7,
+                    "raw": "="
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "cwsp"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "Choice"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "cwsp"
+                }
+            ]
+        },
+        "Rule": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 31,
+                    "ref": "name",
+                    "method": "key"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 5,
+                    "ref": "WSPS"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 7,
+                    "raw": "="
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "cwsp"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "Choice"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "cwsp"
+                }
+            ]
+        },
+        "Choice": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "Serial",
+                    "type": "Serial",
+                    "method": "push",
+                    "key": "alts"
+                },
+                {
+                    "min": 0,
+                    "max": -1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 8,
+                            "raw": "/"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 0,
+                            "ref": "Serial",
+                            "type": "Serial",
+                            "method": "push",
+                            "key": "alts"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Serial": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 9,
+                            "raw": "["
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 0,
+                            "ref": "Choice",
+                            "type": "Choice",
+                            "method": "push",
+                            "key": "seqs"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 10,
+                            "raw": "]"
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 0,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "repeat"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 11,
+                            "raw": "("
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 0,
+                            "ref": "Choice",
+                            "type": "Choice",
+                            "method": "push",
+                            "key": "seqs"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "cwsp"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 12,
+                            "raw": ")"
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "Text",
+                    "type": "Text",
+                    "method": "push",
+                    "key": "seqs"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "Binary",
+                    "type": "Binary",
+                    "method": "push",
+                    "key": "seqs"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 0,
+                    "ref": "Action",
+                    "type": "Action",
+                    "method": "push",
+                    "key": "seqs"
+                }
+            ]
+        },
+        "Text": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 0,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "repeat"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 14,
+                            "raw": "'"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 15,
+                            "ref": "qstring",
+                            "method": "to",
+                            "key": "raw"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "P",
+                            "token": 2,
+                            "ref": "SET",
+                            "method": "-sensitive"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 14,
+                            "raw": "'"
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 0,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "repeat"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 17,
+                            "raw": "\""
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 18,
+                            "ref": "dstring",
+                            "method": "to",
+                            "key": "raw"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 17,
+                            "raw": "\""
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "C",
+                    "seqs": [
+                        {
+                            "min": 0,
+                            "max": 1,
+                            "kind": "r",
+                            "token": 0,
+                            "ref": "repeat"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 19,
+                            "raw": "<"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "a",
+                            "token": 20,
+                            "ref": "prose",
+                            "method": "to",
+                            "key": "raw"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "P",
+                            "token": 2,
+                            "ref": "SET",
+                            "method": "-sensitive"
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "s",
+                            "token": 21,
+                            "raw": ">"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Binary": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "repeat"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "s",
+                    "token": 22,
+                    "raw": "%"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 23,
+                                    "raw": "b"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "A",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 24,
+                                                    "ref": "bin",
+                                                    "method": "to",
+                                                    "key": "first"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "s",
+                                                    "token": 25,
+                                                    "raw": "-"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 24,
+                                                    "ref": "bin",
+                                                    "method": "to",
+                                                    "key": "last"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-R"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-2-last-first"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 24,
+                                                    "ref": "bin",
+                                                    "method": "push",
+                                                    "key": "fields"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": -1,
+                                                    "kind": "C",
+                                                    "seqs": [
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "s",
+                                                            "token": 26,
+                                                            "raw": "."
+                                                        },
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "a",
+                                                            "token": 24,
+                                                            "ref": "bin",
+                                                            "method": "push",
+                                                            "key": "fields"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-S"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-2-fields"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 24,
+                                                    "ref": "bin",
+                                                    "method": "to",
+                                                    "key": "value"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-B"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-2-value"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 27,
+                                    "raw": "d"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "A",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 28,
+                                                    "ref": "dec",
+                                                    "method": "to",
+                                                    "key": "first"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "s",
+                                                    "token": 25,
+                                                    "raw": "-"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 28,
+                                                    "ref": "dec",
+                                                    "method": "to",
+                                                    "key": "last"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-R"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-10-last-first"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 28,
+                                                    "ref": "dec",
+                                                    "method": "push",
+                                                    "key": "fields"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": -1,
+                                                    "kind": "C",
+                                                    "seqs": [
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "s",
+                                                            "token": 26,
+                                                            "raw": "."
+                                                        },
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "a",
+                                                            "token": 28,
+                                                            "ref": "dec",
+                                                            "method": "push",
+                                                            "key": "fields"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-S"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-10-fields"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 28,
+                                                    "ref": "dec",
+                                                    "method": "to",
+                                                    "key": "value"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-B"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-10-value"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 29,
+                                    "raw": "x"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "A",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 30,
+                                                    "ref": "hex",
+                                                    "method": "to",
+                                                    "key": "first"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "s",
+                                                    "token": 25,
+                                                    "raw": "-"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 30,
+                                                    "ref": "hex",
+                                                    "method": "to",
+                                                    "key": "last"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-R"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-16-last-first"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 30,
+                                                    "ref": "hex",
+                                                    "method": "push",
+                                                    "key": "fields"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": -1,
+                                                    "kind": "C",
+                                                    "seqs": [
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "s",
+                                                            "token": 26,
+                                                            "raw": "."
+                                                        },
+                                                        {
+                                                            "min": 1,
+                                                            "max": 1,
+                                                            "kind": "a",
+                                                            "token": 30,
+                                                            "ref": "hex",
+                                                            "method": "push",
+                                                            "key": "fields"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-S"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-16-fields"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "C",
+                                            "seqs": [
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "a",
+                                                    "token": 30,
+                                                    "ref": "hex",
+                                                    "method": "to",
+                                                    "key": "value"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 2,
+                                                    "ref": "SET",
+                                                    "method": "-role-B"
+                                                },
+                                                {
+                                                    "min": 1,
+                                                    "max": 1,
+                                                    "kind": "P",
+                                                    "token": 4,
+                                                    "ref": "TOINT",
+                                                    "method": "-16-value"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "P",
+                            "token": 3,
+                            "ref": "FAIL",
+                            "method": "-invalid-binary-formal"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Action": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "repeat"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 31,
+                    "ref": "name",
+                    "method": "to",
+                    "key": "ref"
+                },
+                {
+                    "min": 0,
+                    "max": 1,
+                    "kind": "a",
+                    "token": 32,
+                    "ref": "action",
+                    "method": "to",
+                    "key": "action"
+                }
+            ]
+        },
+        "repeat": {
+            "min": 1,
+            "max": 1,
+            "kind": "C",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "A",
+                    "seqs": [
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "a",
+                                    "token": 28,
+                                    "ref": "dec",
+                                    "method": "to",
+                                    "key": "min"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 13,
+                                    "raw": "*"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "A",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "a",
+                                            "token": 28,
+                                            "ref": "dec",
+                                            "method": "to",
+                                            "key": "max"
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "P",
+                                            "token": 2,
+                                            "ref": "SET",
+                                            "method": "-max--1"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "s",
+                                    "token": 13,
+                                    "raw": "*"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "P",
+                                    "token": 2,
+                                    "ref": "SET",
+                                    "method": "-min-0"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "A",
+                                    "seqs": [
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "a",
+                                            "token": 28,
+                                            "ref": "dec",
+                                            "method": "to",
+                                            "key": "max"
+                                        },
+                                        {
+                                            "min": 1,
+                                            "max": 1,
+                                            "kind": "P",
+                                            "token": 2,
+                                            "ref": "SET",
+                                            "method": "-max--1"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "min": 1,
+                            "max": 1,
+                            "kind": "C",
+                            "seqs": [
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "a",
+                                    "token": 28,
+                                    "ref": "dec",
+                                    "method": "to",
+                                    "key": "min"
+                                },
+                                {
+                                    "min": 1,
+                                    "max": 1,
+                                    "kind": "P",
+                                    "token": 2,
+                                    "ref": "SET",
+                                    "method": "-max-0"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "P",
+                    "token": 4,
+                    "ref": "TOINT",
+                    "method": "-10-max-min"
+                }
+            ]
+        },
+        "A2Z": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 65,
+            "last": 90,
+            "token": 0
+        },
+        "a2z": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 97,
+            "last": 122,
+            "token": 0
+        },
+        "ALPHA": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "a2z"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "A2Z"
+                }
+            ]
+        },
+        "BIT": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 48,
+            "last": 49,
+            "token": 0
+        },
+        "DIGIT": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 48,
+            "last": 57,
+            "token": 0
+        },
+        "HEXDIG": {
+            "min": 1,
+            "max": 1,
+            "kind": "A",
+            "seqs": [
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "DIGIT"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "a2f"
+                },
+                {
+                    "min": 1,
+                    "max": 1,
+                    "kind": "r",
+                    "token": 0,
+                    "ref": "A2F"
+                }
+            ]
+        },
+        "a2f": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 97,
+            "last": 102,
+            "token": 0
+        },
+        "A2F": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 65,
+            "last": 70,
+            "token": 0
+        },
+        "SP": {
+            "min": 1,
+            "max": 1,
+            "kind": "B",
+            "value": 32,
+            "token": 0
+        },
+        "HTAB": {
+            "min": 1,
+            "max": 1,
+            "kind": "B",
+            "value": 9,
+            "token": 0
+        },
+        "VCHAR": {
+            "min": 1,
+            "max": 1,
+            "kind": "R",
+            "first": 33,
+            "last": 126,
+            "token": 0
+        }
+    },
+    "plugins": {
+        "NL": {
+            "method": ""
+        },
+        "SET": {
+            "method": ""
+        },
+        "FAIL": {
+            "method": ""
+        },
+        "TOINT": {
+            "method": ""
+        }
+    },
+    "tokenize": {
+        "min": 1,
+        "max": 1,
+        "kind": "A",
+        "seqs": [
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "r",
+                "token": 5,
+                "ref": "WSPS"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "P",
+                "token": 1,
+                "ref": "NL",
+                "method": ""
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 7,
+                "raw": "="
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 8,
+                "raw": "/"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 9,
+                "raw": "["
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 10,
+                "raw": "]"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 11,
+                "raw": "("
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 12,
+                "raw": ")"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "s",
+                "token": 13,
+                "raw": "*"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "C",
+                "seqs": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "s",
+                        "token": 14,
+                        "raw": "'"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "r",
+                        "token": 15,
+                        "ref": "qstring"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "A",
+                        "seqs": [
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "s",
+                                "token": 14,
+                                "raw": "'"
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "P",
+                                "token": 3,
+                                "ref": "FAIL",
+                                "method": "-expected-quote"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "C",
+                "seqs": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "s",
+                        "token": 17,
+                        "raw": "\""
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "r",
+                        "token": 18,
+                        "ref": "dstring"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "A",
+                        "seqs": [
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "s",
+                                "token": 17,
+                                "raw": "\""
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "P",
+                                "token": 3,
+                                "ref": "FAIL",
+                                "method": "-expected-double-quote"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "C",
+                "seqs": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "s",
+                        "token": 19,
+                        "raw": "<"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "r",
+                        "token": 20,
+                        "ref": "prose"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "A",
+                        "seqs": [
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "s",
+                                "token": 21,
+                                "raw": ">"
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "P",
+                                "token": 3,
+                                "ref": "FAIL",
+                                "method": "-expected-closeing-angle-brackets"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "C",
+                "seqs": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "s",
+                        "token": 22,
+                        "raw": "%"
+                    },
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "kind": "A",
+                        "seqs": [
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "C",
+                                "seqs": [
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "s",
+                                        "token": 23,
+                                        "raw": "b"
+                                    },
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "r",
+                                        "token": 24,
+                                        "ref": "bin"
+                                    },
+                                    {
+                                        "min": 0,
+                                        "max": 1,
+                                        "kind": "A",
+                                        "seqs": [
+                                            {
+                                                "min": 1,
+                                                "max": 1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 25,
+                                                        "raw": "-"
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 24,
+                                                                "ref": "bin"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-bin"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "min": 1,
+                                                "max": -1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 26,
+                                                        "raw": "."
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 24,
+                                                                "ref": "bin"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-bin"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "C",
+                                "seqs": [
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "s",
+                                        "token": 27,
+                                        "raw": "d"
+                                    },
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "r",
+                                        "token": 28,
+                                        "ref": "dec"
+                                    },
+                                    {
+                                        "min": 0,
+                                        "max": 1,
+                                        "kind": "A",
+                                        "seqs": [
+                                            {
+                                                "min": 1,
+                                                "max": 1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 25,
+                                                        "raw": "-"
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 28,
+                                                                "ref": "dec"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-dec"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "min": 1,
+                                                "max": -1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 26,
+                                                        "raw": "."
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 28,
+                                                                "ref": "dec"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-dec"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "C",
+                                "seqs": [
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "s",
+                                        "token": 29,
+                                        "raw": "x"
+                                    },
+                                    {
+                                        "min": 1,
+                                        "max": 1,
+                                        "kind": "r",
+                                        "token": 30,
+                                        "ref": "hex"
+                                    },
+                                    {
+                                        "min": 0,
+                                        "max": 1,
+                                        "kind": "A",
+                                        "seqs": [
+                                            {
+                                                "min": 1,
+                                                "max": 1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 25,
+                                                        "raw": "-"
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 30,
+                                                                "ref": "hex"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-hex"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "min": 1,
+                                                "max": -1,
+                                                "kind": "C",
+                                                "seqs": [
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "s",
+                                                        "token": 26,
+                                                        "raw": "."
+                                                    },
+                                                    {
+                                                        "min": 1,
+                                                        "max": 1,
+                                                        "kind": "A",
+                                                        "seqs": [
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "r",
+                                                                "token": 30,
+                                                                "ref": "hex"
+                                                            },
+                                                            {
+                                                                "min": 1,
+                                                                "max": 1,
+                                                                "kind": "P",
+                                                                "token": 3,
+                                                                "ref": "FAIL",
+                                                                "method": "-expected-hex"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "min": 1,
+                                "max": 1,
+                                "kind": "P",
+                                "token": 3,
+                                "ref": "FAIL",
+                                "method": "-expected-bin-or-dec-or-hex"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "r",
+                "token": 31,
+                "ref": "name"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "r",
+                "token": 32,
+                "ref": "action"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "r",
+                "token": 33,
+                "ref": "comment"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "r",
+                "token": 28,
+                "ref": "dec"
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "kind": "P",
+                "token": 3,
+                "ref": "FAIL",
+                "method": "-unrecognized-token"
+            }
+        ]
+    },
+    "tokens": [
+        "",
+        "rNL",
+        "rSET",
+        "rFAIL",
+        "rTOINT",
+        "rWSPS",
+        "rNL",
+        "s=",
+        "s/",
+        "s[",
+        "s]",
+        "s(",
+        "s)",
+        "s*",
+        "s'",
+        "rqstring",
+        "rFAIL",
+        "s\"",
+        "rdstring",
+        "s<",
+        "rprose",
+        "s>",
+        "s%",
+        "sb",
+        "rbin",
+        "s-",
+        "s.",
+        "sd",
+        "rdec",
+        "sx",
+        "rhex",
+        "rname",
+        "raction",
+        "rcomment"
+    ]
+}

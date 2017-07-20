@@ -1,129 +1,142 @@
-; ABNFA Definition of ABNF
+; ABNFA Definition of ABNF extended quote-string
 
-; fork RFC 7405
+rules       = 1*(
+                WSPS /
+                Comment /
+                NL /
+                plugins--plugins- /
+                tokenize--tokenize- /
+                Rule-value-defs-
+              )
 
-ast            =  1*( rule-Rule-fetch-name-defs / (*cwsp cnl) )
+PLUGINS     = NL SET FAIL TOINT
 
-name           =  ALPHA *(ALPHA / DIGIT)
+TOKENIZE    = WSPS / NL /
+              '=' / '/' / '[' / ']' / '(' / ')' / '*' /
+              <'> qstring (<'> / FAIL-expected-quote) /
+              '"' dstring ('"' / FAIL-expected-double-quote) /
+              '<' prose ('>' / FAIL-expected-closeing-angle-brackets) /
+              '%' (
+                'b' bin [
+                  '-' (bin / FAIL-expected-bin) /
+                  1*('.' (bin / FAIL-expected-bin))
+                ] /
+                'd' dec [
+                  '-' (dec / FAIL-expected-dec)  /
+                  1*('.' (dec / FAIL-expected-dec) )
+                ] /
+                'x' hex [
+                  '-' (hex / FAIL-expected-hex) /
+                  1*('.' (hex / FAIL-expected-hex))
+                ] /
+                FAIL-expected-bin-or-dec-or-hex
+              ) /
+              name / action / comment / dec /
+              FAIL-unrecognized-token
 
-rule           =  name--to-name definedAs elements cnl
+WSPS        = 1*(SP / HTAB)
 
-defInc         =  "=/"
+comment     = ';' *(SP / HTAB / VCHAR)
 
-definedAs      =  *cwsp ("=" / defInc--alter-flag-list) *cwsp
+name        = ALPHA *(ALPHA / DIGIT)
 
-elements       =  alternation-Choice-to-alts-list *cwsp
+action      = 1*('-' *('-' / ALPHA / DIGIT))
 
-cwsp           =  WSP / (cnl WSP)
+qstring     = 1*(%x20-26 / %x28-7E) / FAIL-invalid-quote-string
+dstring     = 1*(%x20-21 / %x23-7E) / FAIL-invalid-double-quote-string
+prose       = 1*(%x20-3D / %x3F-7E) / FAIL-invalid-prose
 
-cnl            =  [comment-Comment-to-comments-list] CRLF
+bin         = 1*BIT
+dec         = 1*DIGIT
+hex         = 1*HEXDIG
 
-comment        =  commentLit--term
+;;; middle rule
 
-commentLit     =  ";" *(WSP / VCHAR)
+cwsp        = [WSPS] [Comment] *(1*NL WSPS [Comment])
 
-alternation    =  concatenation-Serial-mix-seqs-list
-               *(*cwsp "/" *cwsp concatenation-Serial-mix-seqs-list)
+Comment     = comment-push-comments-Comment
 
-concatenation  =  repetition *(1*cwsp repetition)
+plugins     = 'PLUGINS' (
+                [WSPS] '=' 1*(cwsp Plugin-) cwsp /
+                FAIL-invalid-plugin
+              )
 
-repetition     =  option--push-seqs / ([repeat-Repeat-rep] element--push-seqs)
+Plugin      = name-key [action--action]
 
-repeat         =  1*DIGIT / (*DIGIT "*" *DIGIT)
+tokenize    = 'TOKENIZE' [WSPS] '=' cwsp Choice cwsp
 
-element        =  ref-Ref / group /
-                  charLit-Text / binary-Binary /
-                  range-Range / proseLit-Text
+repeat      = (
+                dec--min '*' (dec--max / SET-max--1) /
+                '*' SET-min-0 (dec--max / SET-max--1) /
+                dec--min SET-max-0
+              )
 
-group          =  "(" *cwsp alternation-Choice *cwsp ")"
+              TOINT-10-max-min
 
-option         =  "[" *cwsp alternation-Choice *cwsp "]"
+Rule        = name-key [WSPS] '=' cwsp Choice cwsp
 
-ref            =  name---ref ["-" action-Action-to-action]
+Choice      = serials *('/' cwsp serials)
 
-action         =  name--to-produce [
-                  "-" [name--to-method] [
-                  "-" [name--to-key] [
-                  "-" [name--to-flag]
-                  ]]]
+serials     = 1*(Serial-push-seqs- cwsp)
 
-b              = "b"
+Serial      = '[' cwsp Choice-push-seqs- cwsp ']' /
+              [repeat] '(' cwsp Choice-push-seqs- cwsp ')' /
+              Text-push-seqs- /
+              Binary-push-seqs- /
+              Action-push-seqs-
 
-d              = "d"
+Text        = [repeat] <'> qstring--raw SET-sensitive <'> /
+              [repeat] '"' dstring--raw '"' /
+              [repeat] '<' prose--raw SET-sensitive '>'
 
-x              = "x"
+Binary      = [repeat]  '%' (
+                'b' (
+                  bin--first '-' bin--last SET-role-R
+                    TOINT-2-last-first /
+                  bin-push-fields 1*('.' bin-push-fields) SET-role-S
+                    TOINT-2-fields /
+                  bin--value SET-role-B
+                    TOINT-2-value
+                )  /
+                'd' (
+                  dec--first '-' dec--last SET-role-R
+                    TOINT-10-last-first /
+                  dec-push-fields 1*('.' dec-push-fields) SET-role-S
+                    TOINT-10-fields /
+                  dec--value SET-role-B
+                    TOINT-10-value
+                ) /
+                'x' (
+                  hex--first '-' hex--last SET-role-R
+                    TOINT-16-last-first /
+                  hex-push-fields 1*('.' hex-push-fields) SET-role-S
+                    TOINT-16-fields /
+                  hex--value SET-role-B
+                    TOINT-16-value
+                ) /
+                FAIL-invalid-binary-formal
+              )
 
+Action      = [repeat] name--ref [action--action]
 
-binary         = "%" (  b--to-formal bin /
-                        d--to-formal dec /
-                        x--to-formal hex )
-
-range          = "%" (  b--to-formal binRange /
-                        d--to-formal decRange /
-                        x--to-formal hexRange )
-
-binLit         =  1*BIT
-
-decLit         =  1*DIGIT
-
-hexLit         =  1*HEXDIG
-
-bin            =  binLit--to-seqs-list [ 1*("." binLit--to-seqs-list) ]
-
-dec            =  decLit--to-seqs-list [ 1*("." decLit--to-seqs-list) ]
-
-hex            =  hexLit--to-seqs-list [ 1*("." hexLit--to-seqs-list) ]
-
-binRange       =  binLit--to-first [ ("-" binLit--to-last) ]
-
-decRange       =  decLit--to-first [ ("-" decLit--to-last) ]
-
-hexRange       =  hexLit--to-first [ ("-" hexLit--to-last) ]
-
-proseLit       =  "<" prose--raw  ">"
-
-prose          = *(%x20-3D / %x3F-7E)
-
-; fork RFC 7405
-
-charLit         =  insensitiveLit / sensitiveLit
-
-insensitiveLit  = "%" insensitive--to-formal quotedLit
-
-insensitive     = "i"
-
-sensitiveLit    = [ "%" sensitive--to-formal ] quotedLit
-
-sensitive       = "s"
-
-quotedLit       =  DQUOTE string--to-raw  DQUOTE
-
-string          = *(%x20-21 / %x23-7E)
 
 ; Core Rules
 
-CRLF    =  (%x0D %x0A) / %x0D / %x0A
+A2Z     = %x41-5A
+a2z     = %x61-7A
 
-ALPHA   =  %x41-5A / %x61-7A   ; A-Z / a-z
+ALPHA   = a2z / A2Z
 
-BIT     =  %x30-31
+BIT     = %x30-31
 
-; CHAR    =  %x01-7F
+DIGIT   = %x30-39 ; 0-9
 
-; CTL     =  %x00-1F / %x7F
+HEXDIG  = DIGIT / a2f / A2F
+a2f     = %x61-66
+A2F     = %x41-46
 
-DIGIT   =  %x30-39 ; 0-9
+SP      = %x20
 
-DQUOTE  =  %x22    ; " (Double Quote)
+HTAB    = %x09
 
-HEXDIG  =  DIGIT / %x41-46 / %x61-66 ; 0-9A-Fa-f
-
-SP      =  %x20
-
-HTAB    =  %x09
-
-; OCTET   =  %x00-FF ; 8 bits of data
-
-WSP     =  SP / HTAB
-
-VCHAR   =  %x21-7E
+VCHAR   = %x21-7E

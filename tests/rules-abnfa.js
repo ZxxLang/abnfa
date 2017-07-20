@@ -22,4 +22,19 @@ test('token to raw string', function(t) {
 	t.equal(toks.reduce(reRaw, ''), expected)
 	toks.forEach(retrans.retrans, retrans)
 	rules = retrans.retrans(null)
+	t.errify(rules)
+
+	let act = new core.Actions(rules)
+
+	t.error(act.err)
+	act.parse(abnfraw)
+	t.error(act.err)
+	return
+	for (let a of act.actions) {
+		t.dump(a[2].kind == 'P' &&
+			`${a[0]}	${a[1]}	${a[2].ref}${a[2].method}` ||
+			`${a[0]}	${a[1]}	${a[2].ref}-${a[2].method || ''}-${a[2].key || ''}-${a[2].type || ''}`
+		)
+	}
+
 })
