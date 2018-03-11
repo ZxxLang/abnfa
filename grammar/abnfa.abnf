@@ -1,142 +1,309 @@
-; ABNFA Definition of ABNF extended quote-string
+; ABNFA Definition of ABNFA
 
-rules       = 1*(
-                WSPS /
-                Comment /
-                NL /
-                plugins--plugins- /
-                tokenize--tokenize- /
-                Rule-value-defs-
-              )
+ABNF-Actions-Metadata =
+  ; Custom configuration
+  to-language     'ABNFA'
+  to-fileTypes    ['abnf']
+  to-scopeName    'source.abnf'
+  to-description  'ABNFA to AST'
 
-PLUGINS     = NL SET FAIL TOINT
+  ; Specific configuration for metadata
+  to-typefield 'type'
+  to-locfield  'loc'
 
-TOKENIZE    = WSPS / NL /
-              '=' / '/' / '[' / ']' / '(' / ')' / '*' /
-              <'> qstring (<'> / FAIL-expected-quote) /
-              '"' dstring ('"' / FAIL-expected-double-quote) /
-              '<' prose ('>' / FAIL-expected-closeing-angle-brackets) /
-              '%' (
-                'b' bin [
-                  '-' (bin / FAIL-expected-bin) /
-                  1*('.' (bin / FAIL-expected-bin))
-                ] /
-                'd' dec [
-                  '-' (dec / FAIL-expected-dec)  /
-                  1*('.' (dec / FAIL-expected-dec) )
-                ] /
-                'x' hex [
-                  '-' (hex / FAIL-expected-hex) /
-                  1*('.' (hex / FAIL-expected-hex))
-                ] /
-                FAIL-expected-bin-or-dec-or-hex
-              ) /
-              name / action / comment / dec /
-              FAIL-unrecognized-token
+  ; AST node structure described
+  metadata  (
+    mode      'string'
+    typefield 'type'
+    locfield  'loc'
+    crlf      ''
+    indent    ''
+    infix     <infix>
+    custom    object<STRING, stringList>
+    typenames unique<STRING>
+    types     array<type>
+    formnames unique<STRING>
+    formulas  array<list, action, string, codes, bits, index>
+    comments  array<comment>
+  )
 
-WSPS        = 1*(SP / HTAB)
+  stringList ARRAY<STRING>
 
-comment     = ';' *(SP / HTAB / VCHAR)
+  type  (
+    kind        '' ; 'OBJECT','MAP','ARRAY','UNIQUE',''
+    fields      object<field>
+    annotation  array<STRING>
+  )
 
-name        = ALPHA *(ALPHA / DIGIT)
+  field (
+    kind        ''
+    value       ''
+    annotation  array<STRING>
+  )
 
-action      = 1*('-' *('-' / ALPHA / DIGIT))
+  infix  (
+    types       array<STRING>
+    left        ''
+    operator    ''
+    right       ''
+    priority    array<stringList>
+  )
 
-qstring     = 1*(%x20-26 / %x28-7E) / FAIL-invalid-quote-string
-dstring     = 1*(%x20-21 / %x23-7E) / FAIL-invalid-double-quote-string
-prose       = 1*(%x20-3D / %x3F-7E) / FAIL-invalid-prose
+  repeat  (
+    min %d1
+    max %d1
+  )
 
-bin         = 1*BIT
-dec         = 1*DIGIT
-hex         = 1*HEXDIG
+  list (
+    repeat  mixins
+    choice  false
+    factor  array<list, action, string, codes, bits, index>
+  )
 
-;;; middle rule
+  codes (
+    repeat  mixins
+    value   array<RUNE>
+    isRange false
+  )
 
-cwsp        = [WSPS] [Comment] *(1*NL WSPS [Comment])
+  bits   (
+    repeat  mixins
+    value   array<U8>
+    isRange false
+  )
 
-Comment     = comment-push-comments-Comment
+  string (
+    repeat    mixins
+    value     ''
+    sensitive true
+  )
 
-plugins     = 'PLUGINS' (
-                [WSPS] '=' 1*(cwsp Plugin-) cwsp /
-                FAIL-invalid-plugin
-              )
+  action (
+    repeat    mixins
+    refer     ''
+    name      ''
+    factor    array<STRING, INT>
+  )
 
-Plugin      = name-key [action--action]
+  index (
+    repeat    mixins
+    refer     %d0
+    action    %d0
+  )
 
-tokenize    = 'TOKENIZE' [WSPS] '=' cwsp Choice cwsp
+  comment (
+    value     ''
+  )
 
-repeat      = (
-                dec--min '*' (dec--max / SET-max--1) /
-                '*' SET-min-0 (dec--max / SET-max--1) /
-                dec--min SET-max-0
-              )
+first =
+  *c-nl metadata 1*c-nl rulelist
 
-              TOINT-10-max-min
+metadata =
+  'ABNF-Actions-Metadata' defined-as meta *(1*c-nl 1*WSP meta)
 
-Rule        = name-key [WSPS] '=' cwsp Choice cwsp
+meta =
+    'to-' (
+        'mode' 1*WSP "'" 1*ALPHA--STRING(mode) "'"
+      / 'crlf' 1*WSP "'" *quotes-vchar--STRING(crlf, unescape) "'"
+      / 'indent' 1*WSP "'" *quotes-vchar--STRING(indent, unescape) "'"
+      / 'locfield' 1*WSP "'" *quotes-vchar--STRING(locfield, unescape) "'"
+      / 'typefield' 1*WSP "'" *quotes-vchar--STRING(typefield, unescape) "'"
+      / 'infix' 1*WSP infix--infix(infix)
+      / custom--PROPERTY(custom)
+      / to--fault('Illegal configuration %q', -3)
+    )
+  / rulename--STRING(typenames) 1*WSP
+    (
+        type-declare--type(types)
+      / to--fault('Illegal type annotation %q', typenames)
+    )
 
-Choice      = serials *('/' cwsp serials)
+custom =
+  rulename--STRING(KEY) 1*WSP (
+      string
+    / '[' *WSP strings--ARRAY(VALUE) *WSP ']'
+    / to--fault('Invalid custom configuration %q')
+  )
 
-serials     = 1*(Serial-push-seqs- cwsp)
+or = 1*c-wsp '/' 1*c-wsp
 
-Serial      = '[' cwsp Choice-push-seqs- cwsp ']' /
-              [repeat] '(' cwsp Choice-push-seqs- cwsp ')' /
-              Text-push-seqs- /
-              Binary-push-seqs- /
-              Action-push-seqs-
+strings = string *(or string)
 
-Text        = [repeat] <'> qstring--raw SET-sensitive <'> /
-              [repeat] '"' dstring--raw '"' /
-              [repeat] '<' prose--raw SET-sensitive '>'
+string =
+  "'" *quotes-vchar--STRING(VALUE, unescape) "'"
 
-Binary      = [repeat]  '%' (
-                'b' (
-                  bin--first '-' bin--last SET-role-R
-                    TOINT-2-last-first /
-                  bin-push-fields 1*('.' bin-push-fields) SET-role-S
-                    TOINT-2-fields /
-                  bin--value SET-role-B
-                    TOINT-2-value
-                )  /
-                'd' (
-                  dec--first '-' dec--last SET-role-R
-                    TOINT-10-last-first /
-                  dec-push-fields 1*('.' dec-push-fields) SET-role-S
-                    TOINT-10-fields /
-                  dec--value SET-role-B
-                    TOINT-10-value
-                ) /
-                'x' (
-                  hex--first '-' hex--last SET-role-R
-                    TOINT-16-last-first /
-                  hex-push-fields 1*('.' hex-push-fields) SET-role-S
-                    TOINT-16-fields /
-                  hex--value SET-role-B
-                    TOINT-16-value
-                ) /
-                FAIL-invalid-binary-formal
-              )
+quotes-vchar =
+    %x20-21 / %x23-26 / %x28 / %x2A-5B / %x5D-7E
+  / '\' (
+      '"' /          ; quotation mark  U+0022
+      "'" /          ; quotation mark  U+0027
+      '\' /          ; reverse solidus U+005C
+      'x' 2HEXDIG /  ; xXX             U+XX
+      'u' (          ; uXXXX           U+XXXXXX
+        '{' 1*6HEXDIG '}' /
+        4HEXDIG
+      )
+    )
 
-Action      = [repeat] name--ref [action--action]
+infix =
+  '(' c-wsp
+    'node'      1*WSP string to--rename(VALUE, node) 1*c-wsp
+    'left'      1*WSP string to--rename(VALUE, left) 1*c-wsp
+    'operator'  1*WSP string to--rename(VALUE, operator) 1*c-wsp
+    'right'     1*WSP string to--rename(VALUE, right) 1*c-wsp
+    'priority'  1*WSP
+      '[' *c-wsp
+        infixes--ARRAY(priority)
+        *(1*c-wsp infixes--ARRAY(priority))
+      *c-wsp ']'
+  c-wsp ')'
 
+infixes =
+  '[' *c-wsp string *(or string) *c-wsp ']'
 
-; Core Rules
+type-declare =
+  '(' 1*(1*c-wsp field-declare--PROPERTY(fields)) 1*c-wsp ')'
+                                    to--STRING(kind, struct)
+  / type-annotation
 
-A2Z     = %x41-5A
-a2z     = %x61-7A
+field-declare =
+  rulename--STRING(KEY) 1*WSP (
+      field-annotation--field(VALUE)
+    / to--fault('Invalid type-annotation on field %s', KEY)
+  )
 
-ALPHA   = a2z / A2Z
+type-annotation =
+    'array'     [annotation]      to--STRING(kind, array)
+  / 'unique'    [annotation]      to--STRING(kind, unique)
+  / 'object'    [annotation]      to--STRING(kind, object)
+  / 'map'       [annotation]      to--STRING(kind, map)
+  / 'embedded'  [annotation]      to--STRING(kind, embedded)
+  / 'null'      annotation        to--STRING(kind, null)
+  / 'mixins'                      to--STRING(kind, mixins)
+  / annotation                    to--STRING(kind, type)
+
+field-annotation =
+    type-annotation
+  / '%d' 1*DIGIT--STRING(value)   to--STRING(kind, int)
+  / "'" *quotes-vchar--STRING(value, unescape) "'"
+                                  to--STRING(kind, string)
+  / bool-val--STRING(value)       to--STRING(kind, bool)
+
+bool-val = 'true' / 'false'
+
+annotation =
+  '<'
+    rulename--STRING(annotation)
+    *(',' [SP] rulename--STRING(annotation))
+  '>'
+
+rulename    = ALPHA *(['-'] (ALPHA / DIGIT ))
+
+defined-as  = *c-wsp '=' *c-wsp
+
+c-wsp       = WSP / c-nl WSP
+
+c-nl        = [comment--comment(/comments)] 1*to--eol
+                ; comment or newline
+
+comment     = ';' comment-val--STRING(value)
+comment-val = *(WSP / VCHAR)
+
+rulelist = rule *( *WSP c-nl [rule] )
+
+rule =
+  rulename--STRING(formnames) defined-as
+  alternation--pending(formulas)
+
+alternation =
+  concatenation--pending(factor) (
+      1*(or concatenation--pending(factor))
+      to--true(choice) to--type(list)
+    / to--discard
+  )
+
+concatenation =
+  repetition--pending(factor) (
+    1*(1*c-wsp repetition--pending(factor)) to--type(list)
+    / to--discard
+  )
+
+repetition = option / [repeat--repeat(repeat)] (group / element)
+
+repeat =
+    '*' to--INT(min,0) (1*DIGIT--INT(max) / to--INT(max,1))
+  / 1*DIGIT--INT(min) (
+        '*' ( 1*DIGIT--INT(max) / to--INT(max, -1) )
+      / to--copy(min, max)
+    )
+
+element =
+    num-val
+  / char-val to--type(string)
+  / action to--type(action)
+
+option =
+  '[' *c-wsp (
+      element *c-wsp ']'
+    / alternation--pending(factor) *c-wsp ']' to--type(list)
+  ) to--INT(min,0)
+
+group =
+  '(' *c-wsp alternation--pending(factor) *c-wsp ')' to--type(list)
+
+action =
+  rulename--STRING(refer) ['--' (
+      1*ALPHA--STRING(name) [
+        '(' *SP argument *(*SP ',' *SP argument ) *SP ')'
+      ]
+    / to--fault('Invalid arguments of %s', refer)
+  )]
+
+argument =
+    "'" *quotes-vchar--STRING(factor, unescape) "'"
+  / int-val--INT(factor)
+  / 1*safe-vchar--STRING(factor)
+  / to--fault('Invalid arguments on %s', refer)
+
+int-val = ['-'] 1*DIGIT
+safe-vchar = ALPHA / DIGIT / '-'
+
+char-val =
+    "'" 1*ex27--STRING(value) "'"
+  / '"' 1*ex22--STRING(value) '"' to--false(sensitive)
+
+ex22 = %x20-21 / %x23-7E
+ex27 = %x20-26 / %x28-7E
+
+num-val =
+  '%' (
+      'x' hex-val to--type(codes)
+    / 'b' bin-val to--type(bits)
+    / to--fault('Unsupport formula %q', -1)
+  )
+
+bin-val =
+  8BIT--INT(value, 2) (
+      '-' 8BIT--INT(value, 2) to--true(isRange)
+    / *('.' 8BIT--INT(value, 2))
+  )
+
+hex-val =
+  1*HEXDIG--RUNE(value,16) (
+      '-' 1*HEXDIG--RUNE(value,16) to--true(isRange)
+    / *('.' 1*HEXDIG--RUNE(value,16))
+  )
+
+ALPHA   = %x61-7A / %x41-5A
 
 BIT     = %x30-31
 
 DIGIT   = %x30-39 ; 0-9
 
-HEXDIG  = DIGIT / a2f / A2F
-a2f     = %x61-66
-A2F     = %x41-46
+HEXDIG  = DIGIT / %x41-46
 
 SP      = %x20
 
-HTAB    = %x09
+WSP     = %x20 / %x09 ; space and horizontal tab
 
-VCHAR   = %x21-7E
+VCHAR   = %x21-7E ; visible (printing) characters

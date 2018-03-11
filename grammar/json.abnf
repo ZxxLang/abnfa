@@ -1,0 +1,101 @@
+; The JavaScript object Notation (JSON) Data Interchange Format
+; https://tools.ietf.org/html/rfc7159
+
+ABNF-Actions-Metadata =
+  to-language     'JSON'
+  to-fileTypes    ['json']
+  to-scopeName    'source.json'
+  to-description  'JSON to AST'
+
+  to-locname    'loc'
+  to-typename   'type'
+
+  value <Object / Array / Literal>
+
+  Object (
+    children [<Property>]
+  )
+
+  Array (
+    children [<Object / Array / Literal>]
+  )
+
+  Literal (
+    value <null / BOOL / STRING / INT / FLOAT>
+  )
+
+  Identifier  (
+    value  ''
+  )
+
+  Property    (
+    key <Identifier>
+    value <Object / Array / Literal>
+  )
+
+JSON-text = ws value ws
+
+value = object--Object
+      / array--Array
+      / string--Literal
+      / number--Literal
+      / boolean--Literal
+      / null--Literal
+
+object  =
+  '{' ws [
+      property--Property(children)
+      *( ws ',' ws property--Property(children) )
+  ] ws '}'
+
+property =
+  string--Identifier(key) ws
+  ':' ws value to--rename('',value)
+
+array  =
+  '[' ws [
+    value to--rename('',children)
+    *( ws ',' ws value to--rename('',children) )
+  ws ] ']'
+
+number    = num-val--INT(value)
+
+num-val   = [ '-' ] ('0' / ( %x31-39 *DIGIT))
+            [ float-val to--type(FLOAT) ]
+
+float-val = E / '.' 1*DIGIT [E]
+
+E         = "e" [ '-' / '+' ] 1*DIGIT
+
+string    = '"' *char--STRING(value) '"'
+
+boolean   = 'true' to--true(value) /
+            'false' to--false(value)
+
+null      = 'null' to--null(value)
+
+ws        = *(
+  	        %x20 /   ; Space
+  	        %x09 /   ; Horizontal tab
+  	        %x0A /   ; Line feed or New line
+  	        %x0D     ; Carriage return
+          )
+
+char      = unescaped /
+            '\' (
+              '"' /          ; quotation mark  U+0022
+              '\' /          ; reverse solidus U+005C
+              '/' /          ; solidus         U+002F
+              'b' /          ; backspace       U+0008
+              'f' /          ; form feed       U+000C
+              'n' /          ; line feed       U+000A
+              'r' /          ; carriage return U+000D
+              't' /          ; tab             U+0009
+              'u' 4HEXDIG    ; uXXXX           U+XXXX
+            )
+
+unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
+
+DIGIT     = %x30-39 ; 0-9
+
+HEXDIG    = DIGIT / %x41-5A / %x61-7A

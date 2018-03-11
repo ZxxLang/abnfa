@@ -594,6 +594,8 @@ DIGIT      = %x30-39
 
 If the raw attribute of the previous action is not equal to the optional string provided by rulename.
 
+    NON-rulename-[rulename]-[rulename]
+
 The difference between the plugin and DENY:
 
    1. Allow raw to be null

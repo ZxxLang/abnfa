@@ -11,7 +11,7 @@
     "aa": "bin/cli.js"
   },
   "scripts": {
-    "test": "tap tests/*.js --cov",
+    "test": "nyc tape tests/*.js",
     "dist": "browserify index.js -o dist/abnfa.js -s ABNFA && uglifyjs dist/abnfa.js -o dist/abnfa.min.js --source-map",
     "aa": "node ./bin/cli.js"
   },
@@ -30,7 +30,8 @@
   },
   "homepage": "https://github.com/ZxxLang/abnfa",
   "devDependencies": {
-    "tap": "^9.0.3"
+    "nyc": "^11.4.1",
+    "tape": "^4.8.0"
   },
   "dependencies": {}
 }
