@@ -13,7 +13,7 @@ ABNF-Actions-Metadata =
 
   ; AST node structure described
   metadata  (
-    mode      'string'
+    bytes     false
     typefield 'type'
     locfield  'loc'
     crlf      ''
@@ -68,8 +68,7 @@ ABNF-Actions-Metadata =
 
   bits   (
     repeat  mixins
-    value   array<U8>
-    isRange false
+    value   ''
   )
 
   string (
@@ -103,11 +102,15 @@ metadata =
 
 meta =
     'to-' (
-        'mode' 1*WSP "'" 1*ALPHA--STRING(mode) "'"
+        'bytes' 1*WSP (
+              'true' to--true(bytes)
+            / 'false' to--false(bytes)
+            / to--fault('Invalid value on to-bytes %s')
+          )
       / 'crlf' 1*WSP "'" *quotes-vchar--STRING(crlf, unescape) "'"
       / 'indent' 1*WSP "'" *quotes-vchar--STRING(indent, unescape) "'"
-      / 'locfield' 1*WSP "'" *quotes-vchar--STRING(locfield, unescape) "'"
-      / 'typefield' 1*WSP "'" *quotes-vchar--STRING(typefield, unescape) "'"
+      / 'locfield' 1*WSP "'" *ALPHA--STRING(locfield) "'"
+      / 'typefield' 1*WSP "'" *ALPHA--STRING(typefield) "'"
       / 'infix' 1*WSP infix--infix(infix)
       / custom--PROPERTY(custom)
       / to--fault('Illegal configuration %q', -3)
@@ -147,10 +150,10 @@ quotes-vchar =
 
 infix =
   '(' c-wsp
-    'node'      1*WSP string to--rename(VALUE, node) 1*c-wsp
-    'left'      1*WSP string to--rename(VALUE, left) 1*c-wsp
-    'operator'  1*WSP string to--rename(VALUE, operator) 1*c-wsp
-    'right'     1*WSP string to--rename(VALUE, right) 1*c-wsp
+    'node'      1*WSP "'" 1*ALPHA--STRING(node) "'" 1*c-wsp
+    'left'      1*WSP "'" 1*ALPHA--STRING(left) "'" 1*c-wsp
+    'operator'  1*WSP "'" 1*ALPHA--STRING(operator) "'" 1*c-wsp
+    'right'     1*WSP "'" 1*ALPHA--STRING(right) "'" 1*c-wsp
     'priority'  1*WSP
       '[' *c-wsp
         infixes--ARRAY(priority)
@@ -278,14 +281,8 @@ ex27 = %x20-26 / %x28-7E
 num-val =
   '%' (
       'x' hex-val to--type(codes)
-    / 'b' bin-val to--type(bits)
+    / 'b' 1*53BIT--STRING(value) to--type(bits)
     / to--fault('Unsupport formula %q', -1)
-  )
-
-bin-val =
-  8BIT--INT(value, 2) (
-      '-' 8BIT--INT(value, 2) to--true(isRange)
-    / *('.' 8BIT--INT(value, 2))
   )
 
 hex-val =
