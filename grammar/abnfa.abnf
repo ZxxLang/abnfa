@@ -1,52 +1,53 @@
 ; ABNFA Definition of ABNFA
 
-ABNF-Actions-Metadata =
+ABNF-Actions =
   ; Custom configuration
   to-language     'ABNFA'
   to-fileTypes    ['abnf']
   to-scopeName    'source.abnf'
   to-description  'ABNFA to AST'
 
-  ; Specific configuration for metadata
+  ; Specific configuration for meta
   to-typefield 'type'
   to-locfield  'loc'
 
   ; AST node structure described
-  metadata  (
-    bytes     false
+  meta  (
+    mode      'string'
     typefield 'type'
     locfield  'loc'
     crlf      ''
     indent    ''
     infix     <infix>
-    custom    object<STRING, stringList>
-    typenames unique<STRING>
-    types     array<type>
-    formnames unique<STRING>
-    formulas  array<list, action, string, codes, bits, index>
-    comments  array<comment>
+    custom    OBJECT<BOOL, STRING, stringList>
+    nullable  UNIQUE<STRING>
+    typenames UNIQUE<STRING>
+    types     ARRAY<type>
+    formnames UNIQUE<STRING>
+    formulas  ARRAY<list, action, string, codes, bits, index>
+    comments  ARRAY<comment>
   )
 
   stringList ARRAY<STRING>
 
   type  (
-    kind        '' ; 'OBJECT','MAP','ARRAY','UNIQUE',''
-    fields      object<field>
-    annotation  array<STRING>
+    kind        ''
+    fields      OBJECT<field>
+    annotation  ARRAY<STRING, INT>
   )
 
   field (
     kind        ''
-    value       ''
-    annotation  array<STRING>
+    value       <INT,STRING,BOOL>
+    annotation  ARRAY<STRING, INT>
   )
 
   infix  (
-    types       array<STRING>
+    node        ''
     left        ''
     operator    ''
     right       ''
-    priority    array<stringList>
+    priority    ARRAY<stringList>
   )
 
   repeat  (
@@ -57,12 +58,12 @@ ABNF-Actions-Metadata =
   list (
     repeat  mixins
     choice  false
-    factor  array<list, action, string, codes, bits, index>
+    factor  ARRAY<list, action, string, codes, bits, index>
   )
 
   codes (
     repeat  mixins
-    value   array<RUNE>
+    value   ARRAY<RUNE>
     isRange false
   )
 
@@ -81,7 +82,7 @@ ABNF-Actions-Metadata =
     repeat    mixins
     refer     ''
     name      ''
-    factor    array<STRING, INT>
+    factor    ARRAY<STRING, INT, FLOAT>
   )
 
   index (
@@ -94,25 +95,27 @@ ABNF-Actions-Metadata =
     value     ''
   )
 
-first =
-  *c-nl metadata 1*c-nl rulelist
+result = text--meta
 
-metadata =
-  'ABNF-Actions-Metadata' defined-as meta *(1*c-nl 1*WSP meta)
+text =
+  *c-nl 'ABNF-Actions' defined-as meta *(1*c-wsp meta)
+  1*(*WSP c-nl) rulelist *(*WSP c-nl) *WSP
 
 meta =
     'to-' (
-        'bytes' 1*WSP (
-              'true' to--true(bytes)
-            / 'false' to--false(bytes)
-            / to--fault('Invalid value on to-bytes %s')
+        'mode' 1*WSP (
+              'string' to--STRING(mode,string)
+            / 'byte' to--STRING(mode,byte)
+            / 'bits' to--STRING(mode,bits)
+            / to--fault('Unsupported %s mode')
           )
       / 'crlf' 1*WSP "'" *quotes-vchar--STRING(crlf, unescape) "'"
       / 'indent' 1*WSP "'" *quotes-vchar--STRING(indent, unescape) "'"
       / 'locfield' 1*WSP "'" *ALPHA--STRING(locfield) "'"
       / 'typefield' 1*WSP "'" *ALPHA--STRING(typefield) "'"
+      / 'nullable' 1*WSP '<' nullable--UNIQUE(nullable) '>'
       / 'infix' 1*WSP infix--infix(infix)
-      / custom--PROPERTY(custom)
+      / custom--OBJECT(custom)
       / to--fault('Illegal configuration %q', -3)
     )
   / rulename--STRING(typenames) 1*WSP
@@ -121,11 +124,15 @@ meta =
       / to--fault('Illegal type annotation %q', typenames)
     )
 
+nullable = rulename--STRING *(',' [SP] rulename--STRING)
+
 custom =
-  rulename--STRING(KEY) 1*WSP (
-      string
-    / '[' *WSP strings--ARRAY(VALUE) *WSP ']'
-    / to--fault('Invalid custom configuration %q')
+  rulename--STRING(key) 1*WSP (
+      'true' to--true(val)
+    / 'false' to--false(val)
+    / string
+    / '[' *WSP strings--stringList(val) *WSP ']'
+    / to--fault('Invalid custom configuration %q', key)
   )
 
 or = 1*c-wsp '/' 1*c-wsp
@@ -133,7 +140,7 @@ or = 1*c-wsp '/' 1*c-wsp
 strings = string *(or string)
 
 string =
-  "'" *quotes-vchar--STRING(VALUE, unescape) "'"
+  "'" *quotes-vchar--STRING(val, unescape) "'"
 
 quotes-vchar =
     %x20-21 / %x23-26 / %x28 / %x2A-5B / %x5D-7E
@@ -150,54 +157,51 @@ quotes-vchar =
 
 infix =
   '(' c-wsp
-    'node'      1*WSP "'" 1*ALPHA--STRING(node) "'" 1*c-wsp
+    'node'      1*WSP "'" rulename--STRING(node) "'" 1*c-wsp
     'left'      1*WSP "'" 1*ALPHA--STRING(left) "'" 1*c-wsp
     'operator'  1*WSP "'" 1*ALPHA--STRING(operator) "'" 1*c-wsp
     'right'     1*WSP "'" 1*ALPHA--STRING(right) "'" 1*c-wsp
-    'priority'  1*WSP
-      '[' *c-wsp
-        infixes--ARRAY(priority)
-        *(1*c-wsp infixes--ARRAY(priority))
-      *c-wsp ']'
+    'priority'  1*WSP '[' *c-wsp priority--ARRAY(priority) *c-wsp ']'
+
   c-wsp ')'
 
-infixes =
-  '[' *c-wsp string *(or string) *c-wsp ']'
+priority = infixes--stringList *(1*c-wsp infixes--stringList)
+
+infixes = '[' *c-wsp strings *c-wsp ']'
 
 type-declare =
-  '(' 1*(1*c-wsp field-declare--PROPERTY(fields)) 1*c-wsp ')'
+  '(' 1*(1*c-wsp field-declare--OBJECT(fields)) 1*c-wsp ')'
                                     to--STRING(kind, struct)
   / type-annotation
 
 field-declare =
-  rulename--STRING(KEY) 1*WSP (
-      field-annotation--field(VALUE)
-    / to--fault('Invalid type-annotation on field %s', KEY)
+  rulename--STRING(key) 1*WSP (
+      field-annotation--field(val)
+    / to--fault('Invalid type-annotation: %s', key)
   )
 
 type-annotation =
-    'array'     [annotation]      to--STRING(kind, array)
-  / 'unique'    [annotation]      to--STRING(kind, unique)
-  / 'object'    [annotation]      to--STRING(kind, object)
-  / 'map'       [annotation]      to--STRING(kind, map)
-  / 'embedded'  [annotation]      to--STRING(kind, embedded)
-  / 'null'      annotation        to--STRING(kind, null)
-  / 'mixins'                      to--STRING(kind, mixins)
-  / annotation                    to--STRING(kind, type)
+    type-kinds--STRING(kind) annotation--ARRAY(annotation)
+  / annotation--ARRAY(annotation)
 
 field-annotation =
-    type-annotation
-  / '%d' 1*DIGIT--STRING(value)   to--STRING(kind, int)
+    '%d' 1*DIGIT--INT(value)   to--STRING(kind, INT)
   / "'" *quotes-vchar--STRING(value, unescape) "'"
-                                  to--STRING(kind, string)
-  / bool-val--STRING(value)       to--STRING(kind, bool)
+                                  to--STRING(kind, STRING)
+  / 'true'  to--true(value)       to--STRING(kind, BOOL)
+  / 'false' to--false(value)      to--STRING(kind, BOOL)
+  / mixins--STRING(kind)
+  / field-kinds--STRING(kind) annotation--ARRAY(annotation)
+  / annotation--ARRAY(annotation)
 
-bool-val = 'true' / 'false'
+type-kinds = field-kinds / 'interface'
+field-kinds = 'ARRAY' / 'UNIQUE' / 'OBJECT'
+mixins = 'mixins'
 
 annotation =
   '<'
-    rulename--STRING(annotation)
-    *(',' [SP] rulename--STRING(annotation))
+    rulename--STRING
+    *(',' [SP] rulename--STRING)
   '>'
 
 rulename    = ALPHA *(['-'] (ALPHA / DIGIT ))
@@ -209,8 +213,8 @@ c-wsp       = WSP / c-nl WSP
 c-nl        = [comment--comment(/comments)] 1*to--eol
                 ; comment or newline
 
-comment     = ';' comment-val--STRING(value)
-comment-val = *(WSP / VCHAR)
+comment     = ';' *comment-val--STRING(value)
+comment-val = WSP / VCHAR
 
 rulelist = rule *( *WSP c-nl [rule] )
 
@@ -231,7 +235,7 @@ concatenation =
     / to--discard
   )
 
-repetition = option / [repeat--repeat(repeat)] (group / element)
+repetition = option / [repeat] (group / element)
 
 repeat =
     '*' to--INT(min,0) (1*DIGIT--INT(max) / to--INT(max,1))
@@ -264,12 +268,17 @@ action =
 
 argument =
     "'" *quotes-vchar--STRING(factor, unescape) "'"
-  / int-val--INT(factor)
-  / 1*safe-vchar--STRING(factor)
+  / number-val--pending(factor)
+  / field--STRING(factor)
   / to--fault('Invalid arguments on %s', refer)
 
-int-val = ['-'] 1*DIGIT
-safe-vchar = ALPHA / DIGIT / '-'
+number-val =
+  ['-'] 1*DIGIT (
+      '.' 1*DIGIT to--type(FLOAT)
+    / to--type(INT)
+  )
+
+field = ['/' / '?'] ['+' / '!'] rulename
 
 char-val =
     "'" 1*ex27--STRING(value) "'"

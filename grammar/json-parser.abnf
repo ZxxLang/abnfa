@@ -7,17 +7,17 @@ ABNF-Actions-Metadata =
   to-locname    '' ; must be clear
   to-typename   '' ; must be clear
 
-  value   <null,true,false,STRING,INT,FLOAT,ARRAY,OBJECT>
+  value   <null,BOOL,STRING,INT,FLOAT,ARRAY,OBJECT>
 
 
 value =
-    '{' object--OBJECT '}'
-  / '[' array--ARRAY ']'
-  / '"' string--STRING('', unescape) '"'
-  / number--INT
-  / 'true' to--true
-  / 'false' to--false
-  / 'null' to--null
+    '{' object--OBJECT(val) '}'
+  / '[' array--ARRAY(val) ']'
+  / '"' string--STRING(val, unescape) '"'
+  / number--INT(val)
+  / 'true' to--true(val)
+  / 'false' to--false(val)
+  / 'null' to--null(val)
 
 number  =
   ['-'] 1*DIGIT [
@@ -26,10 +26,10 @@ number  =
    ]
 
 object =
-  ws [ property--PROPERTY *( ws ',' ws property--PROPERTY ) ] ws
+  ws [ property *( ws ',' ws property ) ] ws
 
 property =
- '"' string--STRING(KEY, unescape) '"' ws ':' ws value to--rename('', VALUE)
+ '"' string--STRING(key, unescape) '"' ws ':' ws value
 
 array = *( ws value ws ',' ws) [value]
 

@@ -1,14 +1,12 @@
-'use strict';
-var core = require('./lib/core')
+let
+  builder = require('./lib/builder'),
+  parser = builder(require('./lib/coder'), null);
 
-exports.ASON = require('./lib/ason')
-exports.Trans = core.Trans
-exports.Rules = core.Rules
-exports.Retrans = core.Retrans
-exports.Entries = core.Entries
-exports.Actions = core.Actions
-exports.tokenize = core.tokenize
+exports.builder = builder;
+exports.coder = coder;
+exports.jscoder = require('./lib/js-coder');
+exports.patternize = require('./lib/patternize');
 
-exports.rules = function rules(grammar) {
-	return core.tokenize(grammar, core.Entries, core.Rules)
-}
+exports.parse = function(source) {
+  return parser.parse(source);
+};

@@ -1,46 +1,51 @@
 ; The JavaScript object Notation (JSON) Data Interchange Format
 ; https://tools.ietf.org/html/rfc7159
 
-ABNF-Actions-Metadata =
-  to-language     'JSON'
-  to-fileTypes    ['json']
-  to-scopeName    'source.json'
-  to-description  'JSON to AST'
+ABNF-Actions =
+  ; Custom configuration
+  to-language 'JSON'
+  to-fileTypes ['json']
+  to-scopeName 'source.json'
+  to-description 'JSON to AST'
 
-  to-locname    'loc'
-  to-typename   'type'
+  ; Specific configuration
+  to-locfield    'loc'   ; The field-name of location
+  to-typefield   'type'  ; The field-name of type
 
-  value <Object / Array / Literal>
+  ; AST node type described.
 
+  ; Structure
   Object (
-    children [<Property>]
+    ; Fields Description.
+    children  ARRAY<Property>
   )
 
   Array (
-    children [<Object / Array / Literal>]
+    children ARRAY<Object, Array, Literal>
   )
 
   Literal (
-    value <null / BOOL / STRING / INT / FLOAT>
+    value <null, BOOL, STRING, INT, FLOAT>
   )
 
   Identifier  (
+    ; Declaration STRING type with initial value
     value  ''
   )
 
   Property    (
-    key <Identifier>
-    value <Object / Array / Literal>
+    key   <Identifier>
+    value <Object, Array, Literal>
   )
 
 JSON-text = ws value ws
 
-value = object--Object
-      / array--Array
-      / string--Literal
-      / number--Literal
-      / boolean--Literal
-      / null--Literal
+value = object--Object(value)
+      / array--Array(value)
+      / string--Literal(value)
+      / number--Literal(value)
+      / boolean--Literal(value)
+      / null--Literal(value)
 
 object  =
   '{' ws [
@@ -49,14 +54,11 @@ object  =
   ] ws '}'
 
 property =
-  string--Identifier(key) ws
-  ':' ws value to--rename('',value)
+  string--Identifier(key) ws ':' ws value
 
 array  =
-  '[' ws [
-    value to--rename('',children)
-    *( ws ',' ws value to--rename('',children) )
-  ws ] ']'
+  '[' ws [ value *( ws ',' ws value ) ws ] ']'
+  to--move(value, children)
 
 number    = num-val--INT(value)
 

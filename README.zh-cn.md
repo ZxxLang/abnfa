@@ -4,34 +4,36 @@ Augmented BNF Actions(ABNFA) 是基于 [ABNF][] 的扩展, 为生成 AST 提供�
 
 通常语法文件用来描述词法和文法解析, 为了生成 AST 需要嵌入特定语言的动作代码.
 
-事实上对于 AST 来说所有的节点类型(结构)是确定的, 可以这样做:
+事实上对解析器来说, 所有节点的类型(结构)必须被确定, ABNFA 采取的办法是:
 
     在语法文件中描述所有节点的结构
-    生成根节点作为当前节点
-    匹配成功, 使用动作语法保存数据到某个字段
-    如果该字段是结构体则作为新的当前节点, 重复此过程生成 AST
+    从第一个节点开始, 通过动作语法描述生成节点的细节并记录
+    全部匹配成功后, 依据这些细节记录构建整个 AST
 
-所以 ABNFA 集合了数据匹配, 语法解析, 节点生成并装配生成 AST 根节点.
+ABNFA 对 [ABNF][] 的修改:
 
-概要: 详见 [ABNFA Definition of ABNFA][]
-
-1. 首条规则名为 `ABNF-Actions-Metadata`, 使用特别的语义描述配置和节点结构
-1. 规则名大小写敏感, 保留规则名 `to`.
-1. 增加动作语法, 增加单引号字符串形式, 大小写敏感
-1. 取消增量替代语法 `=/`, 和预定义 [Core Rules][]
-1. 十进制形式   `%d` 只用于 Metadata 中表示立即整数
-1. 字符散列形式 `<>` 只用于 Metadata 中表示类型注解
+1. 第一条规则命名为 `ABNF-Actions`, 描述节点结构等 meta 数据, 语义由实现决定.
+1. 第二条规则是正式文法
+1. 规则名大小写敏感
+1. 增加单引号字符串 `"'" 1*(%x20-26 / %x28-7E) "'"`, 大小写敏感
+1. 增加引用动作形式 `refer--action(arguments...)`, `refer` 成功后执行 `action`
+1. 保留直接动作形式 `to--action(arguments...)`, 无引用规则直接执行 `action`
+1. 取消增量替代语法 `=/` 和预定义 [Core Rules][]
+1. 十进制形式   `%d` 只用于 `ABNF-Actions` 中表示立即整数
+1. 字符散列形式 `<>` 只用于 `ABNF-Actions` 中表示类型注解
 1. 十六进制形式 `%x` 表示 Unicode 代码点
-1. 二进制形式   `%b` 表示以字节为消耗数据, 与其它形式不共存
-1. 保留通用类型和常量值
+1. 二进制形式   `%b` 表示以 bit 为单位匹配数据
 1. 记录行列位置时从 1 起, 列以单个 Unicode 字符为单位
 
+本包是 ABNFA 的 JavaScript 实现, 定义参见 [ABNFA Definition of ABNFA][].
+
 ```abnf
-ABNF-Actions-Metadata =
+ABNF-Actions =
   to-language  'Hello world'
   HelloWorld ARRAY<STRING>
 
-source = 1*(*SP hello--STRING *SP  world--STRING)
+grammar= syntax--ARRAY
+syntax = 1*(*SP hello--STRING *SP  world--STRING)
 hello  = "hello"
 world  = "world"
 SP     = ' '
@@ -39,33 +41,58 @@ SP     = ' '
 
 ## Install
 
-本包是 ABNFA 的 JavaScript 实现.
-
 ```sh
 yarn install abnfa
 ```
 
 ## Usage
 
+技术细节参见 [DEVELOPERS](DEVELOPERS.md)
+
 ```javascript
 let
   aa = require('abnfa'),
-  metadata = aa.parse(source);
+  meta = aa.parse(source_of_ABNFA).build();
 
-if(!metadata) {
-  throw aa.error;
+// If you are not expecting null
+if(!meta) {
+  throw Error('Parsed successfully but the result is null');
 }
 
+// Compile to JavaScript source code
+
+let code = aa.jscoder(
+  aa.patternize(meta.formnames, meta.formulas)
+);
+
+// Do something
+//
+// console.log(code);
+// fs.writeFileSync('path/xxx.js', code);
+// let coder = require('path/xxx');
+//
+// .... or
+
+let
+  coder = Function('exports', code + ';return exports;')({}), // jshint ignore:line
+  creator = aa.builder(coder);
+
+creator.parse(your_source);
 ```
 
-## Metadata
+解析有可能返回 null, 这取决于你的文法定义. 比如: 提取一条错误日志
 
-Metadata 中的配置以 `to-` 开头, 否则是节点描述.
+## ABNF-Actions
 
-下面的例子展示了 Metadata 的格式.
+参见 [ABNFA Definition of ABNFA][], 一个 ABNFA 文法会生成一个 meta 实例, 包括
+了所有的节点类型描述, 特定配置以及自定义配置. meta 就是 ABNFA 生成的 AST.
+
+在 `ABNF-Actions` 中的配置以 `to-` 开头, 否则是节点类型描述.
+
+例: 详见 [JSON.abnf][]
 
 ```abnf
-ABNF-Actions-Metadata =
+ABNF-Actions =
   ; Custom configuration
   to-language 'JSON'
   to-fileTypes ['json']
@@ -73,13 +100,10 @@ ABNF-Actions-Metadata =
   to-description 'JSON to AST'
 
   ; Specific configuration
-  to-locname    'loc'   ; The field-name of location
-  to-typename   'type'  ; The field-name of type
+  to-locfield    'loc'   ; The field-name of location
+  to-typefield   'type'  ; The field-name of type
 
   ; AST node type described.
-
-  ; First describe the root node.
-  value <Object / Array / Literal>
 
   ; Structure
   Object (
@@ -88,11 +112,11 @@ ABNF-Actions-Metadata =
   )
 
   Array (
-    children ARRAY<Object / Array / Literal>
+    children ARRAY<Object, Array, Literal>
   )
 
   Literal (
-    value <null / BOOL / STRING / INT / FLOAT>
+    value <null, BOOL, STRING, INT, FLOAT>
   )
 
   Identifier  (
@@ -102,29 +126,51 @@ ABNF-Actions-Metadata =
 
   Property    (
     key   <Identifier>
-    value <Object / Array / Literal>
+    value <Object, Array, Literal>
   )
+
+JSON-text = ws value ws
+
+value = object--Object(value)
+      / array--Array(value)
+      / string--Literal(value)
+      / number--Literal(value)
+      / boolean--Literal(value)
+      / null--Literal(value)
+; omitted...
 ```
 
-嵌入(不支持嵌套)字段或类型注解以 `*` 开头, 为共有字段提供了的便捷语法.
+在本包中多数 `Action` 是对类型的描述, 这使得 ABMFA 兼具节点类型描述能力.
 
-下例中的 `*repeat` 是嵌入字段, 等同 `min %d1 max %d1`.
+### repeat
+
+在以下形式中:
+
+1. `*refer--action`    action 总是被执行
+1. `[refer--action]`   refer  成功 1 次后执行 action
+1. `min*refer--action` refer  成功 >=min 次后执行 action
+
+### mixins
+
+mixins 是为混入字段提供的便捷语法糖.
+
+下例中的 `repeat mixins` 等同 `min %d1` 和 `max %d1`.
 
 ```abnf
-ABNF-Actions-Metadata =
+ABNF-Actions =
   literal (
     ; mixin type or embed type
-    *repeat
+    repeat  mixins
     value   ''
     ; Declaration BOOL type with initial value
     sensitive true
   )
 
   action  (
-    *repeat
-    refer ''
-    name  ''
-    args  ARRAY<STRING>
+    repeat  mixins
+    refer   ''
+    name    ''
+    args    array<STRING>
   )
 
   repeat  (
@@ -134,33 +180,42 @@ ABNF-Actions-Metadata =
   )
 ```
 
-### 保留通用类型
+### default-value
 
-1. BYTES    直接存储二进制原始数据, `x BYTES`
-1. BOOL     布尔, 支持 `null`
-1. INT      整型家族 I8, I16, I32, I64, I128, U8, U16, U32, U64, U128
-1. RUNE     值是 U32 表示的有效 Unicode 代码点
-1. FLOAT    类型家族 F32, F64, F128
-1. STRING   字符串, 支持 `null`
-1. ARRAY    数组, `x ARRAY<element-type>`
-1. UNIQUE   数组, `x UNIQUE<element-type>`, 无重复元素值
-1. OBJECT   键值为字符串的 Key-Value 对象, `x OBJECT<Value-type>`
-1. MAP      键值任意类型的 Key-Value 对象, `x MAP<Value-type>`
-1. PROPERTY 表示 OBJECT, MAP 的一个元素(项)
+可为 STRING, BOOL, INT 类型字段设置缺省值.
 
-*通用类型不会附加 `type` 和 `loc` 字段*
+例:
 
-### to-typename
+```abnf
+ABNF-Actions =
+  type (
+    b true      ; The default value is BOOL true
+    i %d1       ; The default value is INT 1
+    s ''        ; The default value is STRING ''
+    n <STRING>  ; There is no default value
+  )
+```
+
+### to-nullable
+
+配置允许值为 `null` 的通用类型名称列表.
+
+    to-nullable <BOOL,STRING>
+
+不同语言对某类型是否允许值为 `null` 存在差异, 对于 JavaScript 来说没有限制.
+所以本实现不会检查该配置, 这是为其它语言实现准备的.
+
+### to-typefield
 
 配置保存类型名称的字段名, 缺省值 'type', 空 '' 表示不保存.
 
-    to-typename 'type'
+    to-typefield 'type'
 
-### to-locname
+### to-locfield
 
 配置保存定位信息的字段名, 缺省值 'loc', 空 '' 表示不保存.
 
-    to-locname 'loc'
+    to-locfield 'loc'
 
 ### to-crlf
 
@@ -179,21 +234,30 @@ ABNF-Actions-Metadata =
 
 ### to-mode
 
-配置数据源匹配模式. 缺省为 `string`.
+配置数据源类型.
 
-    to-mode 'byte'
-    to-mode 'string'
+    to-mode string
+    to-mode byte
+    to-mode bits
+
+1. string 缺省值, 表示数据源为字符串.
+1. byte 表示数据源为 Uint8Array 或 byte(整数) 数组, 以字节为单位匹配数据.
+1. bits 支持位匹配 `%b` 的 byte 模式, 不附加数据偏移量和行列信息
+
+在 bits 模式下匹配字符或字符串时必须以 8bit 对齐.
+
+也就是说在 bits 模式下必须使用连续的位匹配形式 `%b` 保持 8bit 对齐.
 
 ### to-infix
 
 以固定写法配置二元中缀表达式节点名称以及运算符优先级. 示例:
 
 ```abnf
-ABNF-Actions-Metadata =
+ABNF-Actions =
   to-description  'Binary infix expression'
 
   to-infix (
-    types    ['BinaryExpr']
+    node     'BinaryExpr'
     left     'x'
     operator 'op'
     right    'y'
@@ -211,21 +275,48 @@ ABNF-Actions-Metadata =
     op  ''
     y   <Expr>
   )
+
+  Expr <BinaryExpr, UnaryExpr, Number, String, CallExpr, DotExpr, IndexExpr>
   ; omitted ...
 ```
 
-该配置与 [to--infix](#to--infix) 配合使用
+示意例子:
+
+```abnf
+expr =
+  factor (
+    1*(operator factor) to--type(BinaryExpr)
+  )
+
+factor =
+    group--pending
+  / UnaryExpr / Number / String / CallExpr / DotExpr / IndexExpr
+
+group = '(' expr ')'
+
+```
+
+注意 `factor` 中无需包含 `BinaryExpr`, 构建时会生成它.
 
 ## Actions
 
-Action 是附加参数的引用, 描述如何处理数据和装配字段.
+Action 是附加参数的引用, 描述如何处理数据, 比如节点类型和分配到父节点的字段.
+
+两种形式的动作中多数的 `action` 是类型名. 详见下文.
+
+    to--action
+    to--action(arguments...)
+    refer--action
+    refer--action(field, arguments...)
+
+例:
 
 ```abnf
-ABNF-Actions-Metadata =
+ABNF-Actions =
   to-language  'ABNFA'
   ; omitted ...
   action  (
-    *repeat
+    repeat  mixins
     refer   ''  ; rulename or 'to'
     name    ''  ; typename or action-method
     factor  ARRAY<STRING>
@@ -243,7 +334,9 @@ action  =
 
 argument =
     "'" *quotes-vchar--STRING(factor, unescape) "'"
-  / 1*safe-vchar--STRING(factor)
+  / number-val--pending(factor)
+  / field--STRING(factor)
+  / to--fault('Invalid arguments on %s', refer)
 
 quotes-vchar =
     %x20-21 / %x23-26 / %x28 / %x2A-5B / %x5D-7E
@@ -259,109 +352,107 @@ quotes-vchar =
     )
   ; ')' = '\u0029'
 
-safe-vchar = ALPHA / DIGIT / '-'
+field-prefix = ['/' / '?']
 
+field = field-prefix ALPHA *(ALPHA / DIGIT / '-' / '_')
 ; omitted ...
 ```
 
-为了包裹空格, 逗号等特殊符号的引号被剔除了.
+### 通用类型
 
-事实上分直接动作(`to--`)和引用动作, 可用的形式有:
+除了在 meta 中自定义类型外, 本包支持下列通用类型:
 
-    to--action
-    to--action( arguments... )
-    refer--typename
-    refer--typename( field, arguments... )
-    refer--typename( '', arguments... )
+1. BOOL     布尔
+1. BYTE     一个字节, 本实例下被转换为 INT
+1. RUNE     一个有效 Unicode 代码点, 本实例下被转换为 INT
+1. STRING   字符串
+1. INT      整型家族 I8, I16, I32, I64, U8, U16, U32, U64
+1. FLOAT    类型家族 F32, F64, F128, F256
+1. BYTES    直接存储二进制原始数据, `x BYTES`
+1. ARRAY    数组, `x ARRAY<element-type>`
+1. UNIQUE   数组, `x UNIQUE<element-type>`, 无重复元素值
+1. OBJECT   键值为字符串的 Key-Value 对象, `x OBJECT<Value-type>`
 
-引用动作当 `refer` 匹配成功后生成 `typename` 类型的字段 `field`.
+通用类型不会附加 `typefield` 和 `locfield`.
 
-可用的 `typename` 包括通用类型和 Metadata 中声明的类型.
+### field-prefix
 
-所有缺省的 `field` 值为 `''`, 支持 field 不在当前节点上, 通过 field 的首字母:
+如前文所示, 支持字段前缀:
 
-1. ?  以 closest 方式向上赋值到具有指定字段的节点
-1. /  赋值到根节点的指定字段
+1. /  根节点作为目标父节点, 且必须拥有指定字段
+1. ?  向上追溯拥有指定字段父节点
 
-部分动作有引用动作和直接动作两种形式, 见下文.
+ARRAY, UNIQUE, OBJECT 不接收具有字段前缀的数据.
 
 ### refer--ARRAY
 
-生成通用 ARRAY 实例, 忽略所有子层的 `field`.
+生成通用 ARRAY 实例, 忽略子元素的 `field` 值.
 
     refer--ARRAY
     refer--ARRAY(field)
 
-### refer--BITS
+允许直接添加元素类型到 ARRAY
 
-专用于处理 abnfa 规则中二进制形式 `%b` 的 `1*64BIT` 字符串.
+    refer--element-type(ARRAY-field)
 
-*未实现*
+即当目标是 ARRAY 时可选方式:
 
-### refer--BYTES
+1. 一次生成 refer--ARRAY(field)
+1. 添加元素 refer--element-type(ARRAY-field)
 
-生成通用 BYTES 实例, 直接保存匹配的二进制原始数据.
+### refer--UNIQUE
 
-    refer--BYTES
-    refer--BYTES(field)
+生成通用 UNIQUE 实例, 忽略子元素的 `field` 值.
 
-*未实现*
+    refer--UNIQUE
+    refer--UNIQUE(field)
+
+允许直接添加元素类型到 UNIQUE
+
+    refer--element-type(UNIQUE-field)
+
+即当目标是 UNIQUE 时可选方式:
+
+1. 一次生成 refer--UNIQUE(field)
+1. 添加元素 refer--element-type(UNIQUE-field)
+
+子元素类型可以是: BOOL, BYTE, RUNE, STRING, INT 家族, FLOAT 家族
 
 ### refer--OBJECT
 
-生成键值为字符串的 Key-Value 对象, 参见 refer--PROPERTY.
+生成键值为字符串的 Key-Value 对象.
 
     refer--OBJECT
     refer--OBJECT(field)
 
-允许 Meta 定义 field 允许的 Value 类型.
+在 refer 内部生成(多对儿)特定 `key`, `val` 字段记录.
 
-### refer--MAP
+    in-refer--STRING(key)
+    in-refer--val-type(val)
 
-生成键值任意类型的 Key-Value 对象, 参见 refer--PROPERTY.
+如果 field 已存在, 合并 Key-Value.
 
-    refer--MAP
-    refer--MAP(field)
+### refer--BYTES
 
-允许 Meta 定义 field 允许的 Value 类型.
+生成通用 BYTES 实例, 保存匹配的二进制原始数据.
 
-### refer--PROPERTY
+    refer--BYTES
+    refer--BYTES(field, decode)
 
-生成通用 OBJECT, MAP 实例的一个临时元素(项), 每个元素具有临时字段 `KEY`,`VALUE`.
-
-每个 `KEY`,`VALUE` 都有明确的类型.
-
-    refer--PROPERTY
-    refer--PROPERTY(the-target-field-for-OBJECT)
-
-第一种形式 `refer` 可产生多个 Key-Value, 参见 [JSON parser][].
-
-第二种形式 `refer` 只产生一个 Key-Value, 参见 [ABNFA Definition of ABNFA][].
+解码器参数 decode 在 `string mode` 下是必须的.
 
 ### refer--RUNE
 
-用于 Unicode 码点数据, 检查码点合法性. 格式参见 `to-refer--INT`.
+用于 Unicode 码点数据, 检查码点合法性. 格式参见 `to-refer--INTx`.
 
 ### refer--TIME
 
 生成通用通用 TIME 实例.
 
     refer--TIME
-    refer--TIME(field)
+    refer--TIME(field, decode)
 
-TIME 可拥有的字段:
-
-1. year       数字年份
-1. month      数字月份或月份单词(判断前三位, 不区分大小写)
-1. day        数字日, 月份应有的日
-1. hour       数字小时, 值范围 0 到 23
-1. minute     数字分钟, 值范围 0 到 59
-1. second     数字秒, 值范围 0 到 60, 60 只用于正确的闰秒时间
-1. nanosecond 纳秒, 1 到 9 位数字, 不足 9 位的进行修正到纳秒
-1. offset     UTC 偏移量, +hhmm 或 -hhmm
-1. dst        夏令时标记, true 或 false
-1. lsc        期望在时间计算中考量闰秒影响, true 或 false
-1. since      年份补偿, year = year + since
+TIME 的具体值(结构)由 decode 决定, 本实例默认采用 `new Date(source)` 生成.
 
 ### to--true
 
@@ -409,36 +500,58 @@ TIME 可拥有的字段:
 
 ### refer--pending
 
-当 `refer` 生成的类型有多种可能时使用.
+当 `refer` 生成的类型在内部通过 `to--type` 确定时使用.
 
     refer--pending
     refer--pending(field)
 
-`pending` 和 `type` 总是成对儿的, 必须确定 `typename`.
+必须在 `refer` 内部使用 `to--type` 确定 `typename`.
+
+例: 减少匹配回退次数
+
+```abnf
+example = number--pending
+number =
+  1*DIGIT (
+      '.' 1*DIGIT to--type(FLOAT)
+    / to--type(INT)
+  )
+```
+
+配合 `to--discard` 减少不必要的树层级深度, 参见 [ABNFA Definition of ABNFA][]
 
 ### to-refer--STRING
 
-设置通用 STRING 到字段, 支持解码.
+设置通用 STRING 到字段, 支持解码和字符串拼接.
 
     to--STRING(field, string-value)
-    to--STRING(+field, string-value)
     to--STRING(field, 'string value')
+    to--STRING(field, string-value, concat)
     refer--STRING
-    refer--STRING(+)
-    refer--STRING(field)
-    refer--STRING(+field, unescape)
+    refer--STRING(field, decode)
+    refer--STRING(field, decode, concat)
 
-其中
+可用的 decode 值:
 
-1.`+` 表示拼接字符串到字段
 1.`unescape` 表示对对 `\` 开始的转义字符进行反转义
 
-### to-refer--INT
+concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
+
+1. suffix 向尾部拼接, 如果找到 field 记录
+1. prefix 向头部拼接, 如果找到 field 记录
+1. 缺省不拼接
+
+### to-refer--INTx
 
 解析通用 INT 类型家族数据到字段.
 
+    to--I8(field, -1)
+    to--BYTE(field, 1)
+    to--U64(field, 10000)
     to--INT(field, -1)
     refer--INT
+    refer--U8
+    refer--BYTE
     refer--INT(field, radix)
     refer--INT(field, LE)
     refer--INT(field, BE)
@@ -451,7 +564,7 @@ TIME 可拥有的字段:
 1. `BE`  用于二进制大尾序 Big-Endian
 1. `ME`  用于二进制混合序 Middle-Endian
 
-*目前本包仅支持 radix*
+本实现支持的值范围: `Number.MIN_SAFE_INTEGER` 至 `Number.MAX_SAFE_INTEGER`
 
 ### to-refer--FLOAT
 
@@ -470,21 +583,19 @@ TIME 可拥有的字段:
 1. `binary`   2,4,8,16,32 字节比特序列, Base 2  交换格式
 1. `decimal`  2,4,8,16,32 字节比特序列, Base 10 交换格式
 
-*目前本包仅支持 default*
-
 ### to--copy
 
-拷贝一个常量字段的值到另一个字段.
+拷贝一个字段的值到另一个字段. 该方法不支持 field 前缀.
 
     to--copy(field, dist-field)
 
-### to--rename
+### to--move
 
-更改当前节点内所有的字段为另一个字段名.
+更改当前节点内所有指定的字段名为另外的名字.
 
-    to--rename('', another-field)
-    to--rename(field, another-field)
-    to--rename(field, '')
+    to--move('', another-field)
+    to--move(field, another-field)
+    to--move(field, '')
 
 ### to--turn
 
@@ -528,14 +639,14 @@ TIME 可拥有的字段:
 
 匹配行首缩进, 适用于缩进语法的语言. 格式
 
-    to--indent        缩进大于父节点
-    to--indent('>')   缩进大于父节点
+    to--indent        初次探测缩进或缩进大于父节点, 等同 '>>'
+    to--indent('>>')  缩进大于父节点
     to--indent('>1')  缩进比父节点多 1
     to--indent('>=')  缩进不小于父节点, 大于等于
     to--indent('==')  缩进等于节点
     to--indent('<=')  缩进小于等于父节点
     to--indent('<1')  缩进比父节点少 1
-    to--indent('<')   缩进小于父节点
+    to--indent('<<')  缩进小于父节点
 
 通常除了首行缩进 `to--indent` 应该在 `to--eol` 后使用.
 
@@ -567,52 +678,20 @@ ARRAY =
 
 *NodeJS 环境需要启用参数 `--harmony_regexp_property`*
 
-## 核心算法
-
-匹配过程中, 少数动作会被立即执行, 比如 `to--eol`, `to--discard`.
-多数动作被记录下来(不直接执行), 比如 `refer--INT`, `refer--pending`, `to--type`.
-
-```abnf
-example = rule-a--pending(a) ',' rule-b--pending(b) rule-c--STRING(c)
-rule-a  = 'A' to--type(A)
-rule-b  = 'B' to--type(B)
-rule-c  = 'C'
-```
-
-样本 `A,BC` 将生成下列(伪)动作序列 actions:
-
-```
-1, 1, 0, type(A)
-0, 1, 0, pending(a)
-3, 3, 2, type(B)
-2, 3, 2, pending(b)
-3, 4, 4, STRING(c)
-```
-
-三个数字依次表示:
-
-1. source-start    数据开始的位置
-1. source-end      数据结束的位置
-1. starting-length 动作开始时 action.length
-
-所以动作记录是: 从左到右, 从内向外
-节点构建顺序是: 从底部确定类型, 从外到内, 从上向下构建字段
-
-而 `to--discard` 会直接丢弃(移除,弹出)最后一个动作, 被移除的常见动作是 `pending`.
-
 ## License
 
 BSD 2-Clause License
 
-Copyright (c) 2016, YU HengChun <achun.shx@qq.com>
+Copyright (c) 2018, YU HengChun <achun.shx@qq.com>
 All rights reserved.
 
 [ABNF]: https://tools.ietf.org/html/rfc5234
 [Core Rules]: https://tools.ietf.org/html/rfc5234#appendix-B.1
 [tr44]: https://www.unicode.org/reports/tr44/#GC_Values_Table
 [Base64]: https://tools.ietf.org/html/rfc4648#section-4
-[Go time]: https://golang.google.cn/pkg/time/#pkg-constants
 [转义字符]: https://en.wikipedia.org/wiki/Escape_character
 [IEEE 754]: https://en.wikipedia.org/wiki/IEEE_754
 [ABNFA Definition of ABNFA]: https://github.com/ZxxLang/abnfa/blob/master/grammar/abnfa.abnf
+[JSON.abnf]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json.abnf
 [JSON parser]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json-parser.abnf
+[DEVLOPERS.md]: https://github.com/ZxxLang/abnfa/blob/master/DEVLOPERS.md
