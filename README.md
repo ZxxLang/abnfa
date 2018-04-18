@@ -691,7 +691,7 @@ Example:
     to--unicode(Letter)
     to--unicode(Lo,Lu)
 
-*NodeJS 环境需要启用参数 `--harmony_regexp_property`*
+*Need to enable parameters in NodeJS `--harmony_regexp_property`*
 
 ## License
 
