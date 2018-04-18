@@ -21,6 +21,7 @@ let
   coder = require('../lib/coder'),
   names = coder.formnames,
   forms = coder.formulas,
+  jscoder = require('../lib/js-coder'),
   builder = require('../lib/builder'),
   pattern = require('../lib/patternize');
 
@@ -36,8 +37,8 @@ function form(name) {
 
 function Import(code) {
   return Function( // jshint ignore:line
-    'exports',
-    code + ';return exports;')({});
+    'module',
+    code + ';return module.exports;')({});
 }
 
 function be(b, i, src) {
@@ -131,7 +132,27 @@ SP     = ' '
 });
 
 test('bootstrap', function(t) {
-  let b = builder(coder);
-  b.parse(read('abnfa.abnf')).build();
+  let
+    src = read('abnfa.abnf'),
+    bud = builder(coder),
+    g1 = bud.parse(src).build();
+  pattern(g1.formnames, g1.formulas);
+
+  let c1 = jscoder(g1);
+  bud = builder(Import(c1));
+
+  let g2 = bud.parse(src).build();
+  pattern(g2.formnames, g2.formulas);
+
+  let c2 = jscoder(g2);
+  bud = builder(Import(c2));
+
+  let g3 = bud.parse(src).build();
+  pattern(g3.formnames, g3.formulas);
+
+  let c3 = jscoder(g3);
+
+  t.equal(c2, c3, 'bootstrap');
+
   t.end();
 });

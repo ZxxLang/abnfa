@@ -95,18 +95,16 @@ ABNF-Actions =
     value     ''
   )
 
-result = text--meta
+result = grammar--meta
 
-text =
+grammar =
   *c-nl 'ABNF-Actions' defined-as meta *(1*c-wsp meta)
-  1*(*WSP c-nl) rulelist *(*WSP c-nl) *WSP
+  1*(*WSP c-nl) rulelist *(WSP / comment--comment(/comments) / to--eol)
 
 meta =
     'to-' (
         'mode' 1*WSP (
-              'string' to--STRING(mode,string)
-            / 'byte' to--STRING(mode,byte)
-            / 'bits' to--STRING(mode,bits)
+              modes--STRING(mode)
             / to--fault('Unsupported %s mode')
           )
       / 'crlf' 1*WSP "'" *quotes-vchar--STRING(crlf, unescape) "'"
@@ -123,6 +121,8 @@ meta =
         type-declare--type(types)
       / to--fault('Illegal type annotation %q', typenames)
     )
+
+modes = 'string' / 'byte' / 'bits'
 
 nullable = rulename--STRING *(',' [SP] rulename--STRING)
 
@@ -238,7 +238,7 @@ concatenation =
 repetition = option / [repeat] (group / element)
 
 repeat =
-    '*' to--INT(min,0) (1*DIGIT--INT(max) / to--INT(max,1))
+    '*' to--INT(min,0) (1*DIGIT--INT(max) / to--INT(max, -1))
   / 1*DIGIT--INT(min) (
         '*' ( 1*DIGIT--INT(max) / to--INT(max, -1) )
       / to--copy(min, max)
@@ -295,9 +295,9 @@ num-val =
   )
 
 hex-val =
-  1*HEXDIG--RUNE(value,16) (
-      '-' 1*HEXDIG--RUNE(value,16) to--true(isRange)
-    / *('.' 1*HEXDIG--RUNE(value,16))
+  1*HEXDIG--RUNE(value,'16') (
+      '-' 1*HEXDIG--RUNE(value,'16') to--true(isRange)
+    / *('.' 1*HEXDIG--RUNE(value,'16'))
   )
 
 ALPHA   = %x61-7A / %x41-5A
