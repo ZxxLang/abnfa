@@ -4,13 +4,13 @@ Augmented BNF Actions(ABNFA) 是基于 [ABNF][] 的扩展, 为生成 AST 提供�
 
 通常语法文件用来描述词法和文法解析, 为了生成 AST 需要嵌入特定语言的动作代码.
 
-事实上对解析器来说, 所有节点的类型(结构)必须被确定, ABNFA 采取的办法是:
+因为对解析器来说, 所有节点的类型(结构)必须被确定, 所以可以这样做:
 
     在语法文件中描述所有节点的结构
-    从第一个节点开始, 通过动作语法描述生成节点的细节并记录
-    全部匹配成功后, 依据这些细节记录构建整个 AST
+    匹配时记录每一个生成节点的动作细节
+    全部匹配成功后, 依据这些动作构建整个 AST
 
-ABNFA 对 [ABNF][] 的修改:
+ABNFA 与 [ABNF][] 的不同:
 
 1. 第一条规则命名为 `ABNF-Actions`, 描述节点结构等 meta 数据, 语义由实现决定.
 1. 第二条规则是正式文法
@@ -39,6 +39,8 @@ world  = "world"
 SP     = ' '
 ```
 
+[Sublime Text 3 ABNF 语法高亮插件][ABNF-sublime-syntax]
+
 ## Install
 
 ```sh
@@ -47,7 +49,7 @@ yarn install abnfa
 
 ## Usage
 
-技术细节参见 [DEVELOPERS](DEVELOPERS.md)
+返回值取决于你的文法定义. 技术细节参见 [DEVELOPERS](DEVELOPERS.md)
 
 ```javascript
 let
@@ -79,8 +81,6 @@ let
 
 creator.parse(your_source);
 ```
-
-解析有可能返回 null, 这取决于你的文法定义. 比如: 提取一条错误日志
 
 ## ABNF-Actions
 
@@ -140,7 +140,7 @@ value = object--Object(value)
 ; omitted...
 ```
 
-在本包中多数 `Action` 是对类型的描述, 这使得 ABMFA 兼具节点类型描述能力.
+多数 `Action` 是对类型的描述, 这使得 ABNFA 兼具节点类型描述能力.
 
 ### repeat
 
@@ -203,7 +203,7 @@ ABNF-Actions =
     to-nullable <BOOL,STRING>
 
 不同语言对某类型是否允许值为 `null` 存在差异, 对于 JavaScript 来说没有限制.
-所以本实现不会检查该配置, 这是为其它语言实现准备的.
+所以本实现不会检查该配置, 其它语言可能需要它.
 
 ### to-typefield
 
@@ -213,7 +213,7 @@ ABNF-Actions =
 
 ### to-locfield
 
-配置保存定位信息的字段名, 缺省值 'loc', 空 '' 表示不保存.
+配置保存定位信息的字段名, 缺省值 'loc', 空('')表示不保存.
 
     to-locfield 'loc'
 
@@ -227,7 +227,7 @@ ABNF-Actions =
 
 ### to-indent
 
-配置一致的行首缩进符号. 缺省为 `''` 自动提取第一个缩进符.
+配置行首缩进符号. 缺省为 '' 自动提取第一个缩进符.
 
     to-indent ' '
     to-indent '\t'
@@ -373,11 +373,9 @@ field = field-prefix ALPHA *(ALPHA / DIGIT / '-' / '_')
 1. UNIQUE   数组, `x UNIQUE<element-type>`, 无重复元素值
 1. OBJECT   键值为字符串的 Key-Value 对象, `x OBJECT<Value-type>`
 
-通用类型不会附加 `typefield` 和 `locfield`.
-
 ### field-prefix
 
-如前文所示, 支持字段前缀:
+分配一个节点到上级节点的某个字段时可以使用字段前缀:
 
 1. /  根节点作为目标父节点, 且必须拥有指定字段
 1. ?  向上追溯拥有指定字段父节点
@@ -391,11 +389,11 @@ ARRAY, UNIQUE, OBJECT 不接收具有字段前缀的数据.
     refer--ARRAY
     refer--ARRAY(field)
 
-允许直接添加元素类型到 ARRAY
+直接使用添加元素到 ARRAY 的形式更利于类型检查.
 
     refer--element-type(ARRAY-field)
 
-即当目标是 ARRAY 时可选方式:
+即当目标是 ARRAY 时有两种方式可选:
 
 1. 一次生成 refer--ARRAY(field)
 1. 添加元素 refer--element-type(ARRAY-field)
@@ -522,7 +520,7 @@ number =
 
 ### to-refer--STRING
 
-设置通用 STRING 到字段, 支持解码和字符串拼接.
+生成通用 STRING 到字段, 支持解码和字符串拼接.
 
     to--STRING(field, string-value)
     to--STRING(field, 'string value')
@@ -531,19 +529,19 @@ number =
     refer--STRING(field, decode)
     refer--STRING(field, decode, concat)
 
-可用的 decode 值:
+内建的 decode:
 
-1.`unescape` 表示对对 `\` 开始的转义字符进行反转义
+1.`unescape` 表示对对 `\` 开始的 [转义字符][Escape_character] 进行反转义
 
 concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
 
-1. suffix 向尾部拼接, 如果找到 field 记录
-1. prefix 向头部拼接, 如果找到 field 记录
-1. 缺省不拼接
+1. `suffix` 向尾部拼接, 如果找到 field 记录
+1. `prefix` 向头部拼接, 如果找到 field 记录
+1. 其它不拼接
 
-### to-refer--INTx
+### to-refer--INT
 
-解析通用 INT 类型家族数据到字段.
+生成通用 INT 类型家族数据到字段.
 
     to--I8(field, -1)
     to--BYTE(field, 1)
@@ -560,15 +558,15 @@ concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
 其中
 
 1. radix 值为 2,8,10,16 的基数(进制), 缺省为 10.
-1. `LE`  用于二进制小尾序 Little-Endian
-1. `BE`  用于二进制大尾序 Big-Endian
-1. `ME`  用于二进制混合序 Middle-Endian
+1. `LE`  二进制小尾序 Little-Endian
+1. `BE`  二进制大尾序 Big-Endian
+1. `ME`  二进制混合序 Middle-Endian
 
 本实现支持的值范围: `Number.MIN_SAFE_INTEGER` 至 `Number.MAX_SAFE_INTEGER`
 
 ### to-refer--FLOAT
 
-解析通用 FLOAT 类型家族数据到字段.
+生成通用 FLOAT 类型家族数据到字段.
 
     to--FLOAT(field, -1.0)
     to--FLOAT(field, 1.0E10)
@@ -585,9 +583,9 @@ concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
 
 ### to--copy
 
-拷贝一个字段的值到另一个字段. 该方法不支持 field 前缀.
+拷贝已有字段的值到新字段.
 
-    to--copy(field, dist-field)
+    to--copy(existing-field, new-field)
 
 ### to--move
 
@@ -609,35 +607,34 @@ concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
 ### to--fault
 
 结束匹配并返回(抛出)错误信息, 后缀当前的行列位置, 总长度不超过 60 列.
-如果当前位置是 `EOF` 则附加前缀 `[EOF]`.
 
     to--fault('message ...')
     to--fault('message ...', -10)
     to--fault('message %s ...')
     to--fault('message %q ...')
-    to--fault('message %s ...', later)
-    to--fault('message %q ...', later)
+    to--fault('message %s ...', offset)
+    to--fault('message %q ...', offset)
 
-如果包含 `%s` 或 `%q`, 从 `later` 位置提取原始数据.
+如果包含 `%s` 或 `%q`, 从 `offset` 位置提取原始数据.
 
-1. `%s`    提取原始非空白字符串
-1. `%q`    用双引号包裹提取原始字符串并的转义空白字符
-1. `later` 负数偏移字符量或已生成的字段名. 缺省值为 0, 即当前位置.
+1. `%s`     提取原始字符串
+1. `%q`     用双引号包裹提取原始字符串并的转义空白字符
+1. `offset` 负数偏移字符量或已生成的字段名. 缺省值为 0, 即当前位置.
 
 输出举例:
 
     Illegal configuration to-infix:10:4
-    [EOF]Unclosed double quotes to-:100:4
+    Unclosed double quotes to-:100:4
 
 ### to--eol
 
-依照 `to-crlf` 的配置匹配换行符并记录行列位置信息. 格式:
+依照 `to-crlf` 的配置匹配换行符并记录行列位置信息.
 
     to--eol
 
 ### to--indent
 
-匹配行首缩进, 适用于缩进语法的语言. 格式
+匹配行首缩进, 适用于缩进语法的语言.
 
     to--indent        初次探测缩进或缩进大于父节点, 等同 '>>'
     to--indent('>>')  缩进大于父节点
@@ -689,9 +686,9 @@ All rights reserved.
 [Core Rules]: https://tools.ietf.org/html/rfc5234#appendix-B.1
 [tr44]: https://www.unicode.org/reports/tr44/#GC_Values_Table
 [Base64]: https://tools.ietf.org/html/rfc4648#section-4
-[转义字符]: https://en.wikipedia.org/wiki/Escape_character
 [IEEE 754]: https://en.wikipedia.org/wiki/IEEE_754
 [ABNFA Definition of ABNFA]: https://github.com/ZxxLang/abnfa/blob/master/grammar/abnfa.abnf
 [JSON.abnf]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json.abnf
 [JSON parser]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json-parser.abnf
 [DEVLOPERS.md]: https://github.com/ZxxLang/abnfa/blob/master/DEVLOPERS.md
+[ABNF-sublime-syntax]: https://github.com/ZxxLang/ABNF-sublime-syntax

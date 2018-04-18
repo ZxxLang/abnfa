@@ -1,795 +1,713 @@
 # ABNFA
 
-Augmented BNF Actions(ABNFA) based on [ABNF][], extend the action semantics of
- the reference rules to provide a tool chain for generating AST.
+Augmented BNF Actions(ABNFA) is an extension based on [ABNF][],
+provides action syntax support for generating AST.
 
-Original definition:
+The usual grammar file is used to describe lexical and grammatical parsing,
+in order to generate an AST need to embed a specific language of the action code.
+
+Because the type (structure) of all nodes must be determined for the parser,
+you can do so:
+
+    Describe the structure of all nodes in a grammar file
+    Record the action details of each generated node in the match
+    Build the entire AST based on these actions after all matches
+
+Difference between ABNFA and [ABNF][]:
+
+1. The first rule is named `Abnf-actions`, describes meta data such as node structure.
+1. The second rule is the formal grammar.
+1. Rule name is case sensitive.
+1. Add single quote string `"'" 1* (%x20-26/%x28-7e) "'"`, case-sensitive.
+1. Add Reference Action form `refer--action (arguments ...)`, executing `action` after `refer` matches.
+1. Keep Direct Action form `to--action (arguments ...)`, executes `action` without the reference rule.
+1. Cancel increment substitution syntax `=/` and pre-defined [Core rules][].
+1. The dec-val `%d` is used only in `Abnf-actions` to denote immediate integers.
+1. The prose-val `<>` is used only in `Abnf-actions` to represent type-annotation.
+1. The hex-val `%x` represents the Unicode code-point.
+1. The bin-val `%b` means matching data in bit units.
+1. Record row and column positions from 1, columns in single Unicode character.
+
+This package is a JavaScript implementation of ABNFA. See [ABNFA Definition of ABNFA][] for definition.
 
 ```abnf
-rule      =  rulename defined-as elements c-nl
-rulename  =  ALPHA *(ALPHA / DIGIT / "-")
+ABNF-Actions =
+  to-language  'Hello world'
+  HelloWorld ARRAY<STRING>
+
+grammar= syntax--ARRAY
+syntax = 1*(*SP hello--STRING *SP  world--STRING)
+hello  = "hello"
+world  = "world"
+SP     = ' '
 ```
 
-Definition of ABNFA:
-
-```abnf
-rule      = action definedas elements cnl
-rulename  = ALPHA *(ALPHA / DIGIT)
-argument  = 1*(ALPHA / DIGIT)
-
-action    = ref [tail]
-tail      = "-" [method] ["-" key] ["-" type]
-            *(ALPHA / DIGIT / "-")
-
-ref       = rulename
-type      = argument
-method    = argument
-key       = 1*(ALPHA / DIGIT / "_")
-```
-
-The structure of action:
-
-```yaml
-action:
-  ref: String
-  tail: String
-  method: String
-  key: String
-  type: String
-```
-
-The structure contains information about how to generate the AST node object,
- so the extension is named Actions.
+[ABNF syntax highlighting for Sublime Text 3][ABNF-sublime-syntax]
 
 ## Install
 
-```
-$ npm install abnfa
+```sh
+yarn install abnfa
 ```
 
 ## Usage
 
-```js
-const aa = require('abnfa');
-
-const grammar = `
-first       = allPlugins rules-leaf-
-allPlugins  = ACTIONS-CRLF ACTIONS-DENY ACTIONS-MUST ACTIONS-FLAG
-              ACTIONS-SWAP ACTIONS-RAW  ACTIONS-NON  ACTIONS-POP
-              ACTIONS-OUTDENT
-
-rules       = 'typing the rules'
-`
-
-var rules = aa.rules(grammar);
-//=== aa.tokenize(grammar, aa.Entries, aa.Rules)
-
-if (rules instanceof Error) throw rules;
-
-var a = new aa.Actions(rules);
-// or aa.tokenize(grammar, aa.Entries, aa.Rules, aa.Actions)
-if (a instanceof Error) throw a;
-
-var aat = a.parse('typing the source');
-if (aat instanceof Error) throw aat;
-
-console.log(aa.ASON.serialize(aat))
-```
-
-## Cli
-
-```shell
-$ aa
-```
-
-# Specifications
-
-1. Case sensitive
-2. The symbol "-" is used as a delimiter
-3. Match the input source from the first rule
-4. The grammar description order is top-down, from left to right
-5. The `""` in `rule = "" other` is always matched failed
-6. The `tail` stored after the `action.ref` string
-7. The action with `method` or `key` or `type` produces Action object
-
-Equivalent shorthand format: ends with '-'
-
-    ref-                   === ref---ref
-    ref-method-            === ref-method--ref
-    ref-method-key-        === ref-method-key-ref
-    ref-method-key-more-   === ref-method-key-ref-more
-
-An array of actions is generated after the final match of the input source,
- which is called Abstract Actions Tree (AAT).
-
-AAT element is an Action object, comprising information for generating AST node.
-
-In the following
-
-  1. action represents an Action object
-  2. node   represents an AST node
-
-Action object structure:
-
-```yaml
-Action:
-  start: 0        # The action matches the start offset of the input
-  end: 1          # The end offset of the action match input (not including end)
-  type: string    # The name of type of AST node
-  key: string     # The name of the node in the parent node
-  raw: string     # for the leaf node, leaving the matching original string
-  method: string  # that how to assign to the parent node, three categories
-                  #   note  means annotation node
-                  #   push  means parentNode[key].push(thisNode)
-                  #   otherwise means parentNode[key] = thisNode
-                  #
-  factors:        # Used for array or non-leaf nodes.
-    - Action:     #
-  precedence: 1   # Used for binary operation expression
-  flag: string    # Generates extra markup for the node, see [FLAG](#FLAG)
-  loc:            # The position of the parsed source region, see [CRLF](#CRLF)
-    startLine: 1
-    startCol: 1
-    endLine: 2
-    endCol: 1
-```
-
-The structure is very close to AST, but the attribute is inside the factors.
-
-## methods
-
-Summary of the available methods:
-
-1. Support extract the original string match
-    `lit`, `leaf`, `note`, `binary`
-2. Save the original string to the raw attribute
-    `lit`, `leaf`, `note`
-3. Direct build the factors attribute
-    `alone`, `body`, `list`
-4. Must be used in combination
-    `infix`, `binary`
-5. Modifying factors element order
-    `amend`, `prefix`, `infix`
-6. Must be conjunction with type
-    `binary`, `reset`, `ifn`
-7. Can not be used in conjunction with type
-    `binary`, `reset`, `ifn`
-8. Must be conjunction with key
-    `binary`
-9. Can not be used in conjunction with type
-    `ifn`
-
-In all methods, only `lit`, `leaf`, `note` and `binary` has the ability to
- extract the matching original string.
-The extracted string is only stored in the raw attribute of the leaf node.
-
-### lit
-
-This method extracts the matching original string. Supports an empty string.
-
-    ref-lit        Support stitching
-    ref-lit-key    Support stitching
-    ref-lit--type  Do not support stitching, equivalent ref-leaf--type
-
-Stitching must avoid back, thousands of separated decimal places
- `.123'456'78` as an example:
-
-```abnf
-;incorrect = "." *(d3-lit "'") d12-lit
-;because d3 will change the existing action when splicing
-decimals   = "." (
-              d4-lit /
-              d3-lit *("'" d3-lit) ["'" d12-lit] /
-              d12-lit
-            )
-d12        = 1*2DIGIT
-d3         = 3DIGIT
-d4         = 4*DIGIT
-```
-
-See [Thousand Separator Values] (# Demos).
-
-### leaf
-
-The method extracts the matching original string and generates the node. Supports the empty string.
-
-    ref-leaf-[key]-[type]
-
-### note
-
-The method is dedicated to comment, Behavior consistent with leaf.
-
-    ref-note-[key]-[type]
-
-Note: In order to correctly calculate the operator, you must use this method with prefix and infix exclude non-operator.
-
-### to
-
-Does not generate an action, Reset the first action.key.
-In fact 'to' is always replaced by an empty string.
-
-    ref--key-[type]
-    ref-to-key-[type]
-
-### reset
-
-Does not generate an action, Reset the first action.key and action.start.
-
-    ref-reset
-    ref-reset-key
-
-See [if-here](#OUTDENT)
-
-### amend
-
-Exchange the location and key with the previous action.
-
-    ref-amend-key       change key  only
-    ref-amend--type     change type only
-    ref-amend-key-type  exchange key only
-
-See [Call-amend-func-](#OUTDENT)
-
-Example: Used for Suffix Expression
-
-```abnf
-unaryExpr   = Number- / Identifier- [UpdateExpr-amend-operand-]
-UpdateExpr  = update-lit-operator
-update      = "++" / "--"
-```
-
-### prefix
-
-Used for Prefix Expression.
-
-    ref-prefix-[key]-type
-
-Tip: The operator must have type.
-
-### infix
-
-Used for Infix Expression.
-Hold the previous action to factors, and exchange key.
-
-    ref-infix-[key]-type
-
-The method must contain binary actions internally.
-
-### binary
-
-Used for binary operators. This method holds the matching original string.
-
-    ref-binary-key
-
-The priority in ref is sorted from low to high,
-using pure string group substitution, and greedy matching. Example:
-
-```abnf
-BinaryExpr      = (
-                    operatorSymbol-binary-operator /
-                    operatorAlpha-binary-operator 1*cwsp
-                  ) *cwsp Expression
-
-operatorSymbol  = "" /
-                  "" /
-                  ("+" / "-") /
-                  ("*" / "/")
-
-operatorAlpha   = "or" /
-                  "and" /
-                  "" /
-                  ""
-```
-
-In this example, the operator rules are divided into two groups,
-and the string operator is checked to the right of the string operator.
-
-Note: The minimum value of precedence is from 1.
-
-### body
-
-The method produces factors, Execute the build if the match is successful,
- Which can contain 0 or more child nodes (actions).
-
-    ref-body-[key]-[type]
-
-See [OUTDENT](#OUTDENT).
-
-Note: Build a dependency on the parent node to generate the factors and store the child nodes, but not recursively.
-
-So the use of body in the multi-level to get the correct results.
-
-### list
-
-The method behaves the same as the body method, and ref generates the array element (key is the array).
-
-    ref-list-[key]-[type]
-
-See [OUTDENT](#OUTDENT).
-
-### alone
-
-The method produces factors, Execute the build if the match is successful,
- Generate a unique node (action).
-
-    ref-alone-[key]-[type]
-
-Commonly used in grouping expressions.
-
-See [OUTDENT](#OUTDENT).
-
-### ifn
-
-The method returns true when ref is passed, and does not return true.
-
-    ref-ifn
-
-# Actions
-
-The core tool Actions generates AATs according to
- the rules that match the input source.
-
-Understanding the following processing steps helps to
- properly use ABNFA grammar and develop plug-ins.
-
-match:
-
-From top to bottom to match, from bottom to top action.
-
-Plugins are executed when an interrupt can be issued or a plugin event is created,
-but note that the parent action may not be generated.
-
-The matching process may directly generate sub factors, such as the either method
-
-Each factors performs the build steps.
-
-Construct:
-
-First trigger plugin events, usually no need to deal with child factors.
-
-Generates the child factors of the amend method
-
-Generates the seed factors of the prefix method
-
-Generates the child factors of the infix method
-
-Other methods based on start, end generated child factors
-
-## plugins
-
-The plugin function can be passed through the second parameter of new Actions or
- by using the addPlugins method.
-
-Loading stage:
-
-Must be in front of the first rule (in fact ACTIONS is the built-in plugin).
-
-    ACTIONS-PluginName-[args]-[args]-[args]
-
-If the self-loading function `LOAD_PluginName` is executed,
- otherwise execute` PluginName`.
-
-```js
-function LoadOrExecutePlugin(rule, self): bool {}
-```
-
-Arguments
-
-    rule   Contains the rules defined by the action.
-    self   The current Actions instance
-
-Returns a Boolean value indicating success or failure.
-
-Execute stage:
-
-Ref means the name of the plugin with ref in grammar.
-
-An interrupt is issued when the plugin is executed successfully and
- needs to be interrupted when subsequent matching is used:
-
-Set the `break` property of the Actions instance to true and
- return true to indicate success
-
-If needed. Generate an event by calling the before method of the Actions instance.
-
-```js
-function before(type, method, key){}
-```
-
-Arguments
-
-    type   Event function name, plugin function 'ON_type' must exist.
-    method Additional argument are saved in the `method` attribute
-    key    Additional argument are saved in the `key` attribute
-
-Returns the event object motion objects and more than a representation of the current index property factors.length
-
-Trigger the event stage:
-
-```js
-function trigger(self, factors, event){}
-```
-
-Arguments
-
-    self     The current Actions instance
-    factors  Need to deal with the action array
-    event    The event object
-
-Returns a Boolean value indicating success or failure.
-
-Here are the built-in plugins.
-
-### ACTIONS
-
-Load a plugin. Example: Load 'CRLF', 'FLAG'
-
-```abnf
-first = ACTIONS-CRLF ACTIONS-FLAG real-grammar-rule
-```
-
-### FLAG
-
-Assigns the flag attribute to the last action last = factors [factors.length-1] in the current factors.
-
-
-    FLAG-flags --> last.flag = (last.flag || '') + '-' + flags
-
-### CRLF
-
-The ranks are always recorded in the action. The plugin is always executed first.
-
-    CRLF
-
-Line number and column number from 1, save in the `loc` attribute of Action:
-
-```yaml
-Action:
-  loc:
-    startLine: 1
-    startCol: 1
-    endLine: 1
-    endCol: 2
-```
-
-### MUST
-
-Subsequent matches must be successful and refuse to roll back.
-
-    MUST
-
-### POP
-
-The plugin generates an event and implements the effect of factors.pop().
-
-    POP
-
-Execute the following code in the event:
-
-```js
-function ON_POP(self, list, n) {
-  // list == self.factors
-  if (n.index && n.index <= list.length)
-    list[n.index - 1] = null
-  return true
+The return value depends on your grammar definition. See [DEVELOPERS](DEVELOPERS.md)
+
+```javascript
+let
+  aa = require('abnfa'),
+  meta = aa.parse(source_of_ABNFA).build();
+
+// If you are not expecting null
+if(!meta) {
+  throw Error('Parsed successfully but the result is null');
 }
+
+// Compile to JavaScript source code
+
+let code = aa.jscoder(
+  aa.patternize(meta.formnames, meta.formulas)
+);
+
+// Do something
+//
+// console.log(code);
+// fs.writeFileSync('path/xxx.js', code);
+// let coder = require('path/xxx');
+//
+// .... or
+
+let
+  coder = Function('exports', code + ';return exports;')({}), // jshint ignore:line
+  creator = aa.builder(coder);
+
+creator.parse(your_source);
 ```
 
-### OUTDENT
+## ABNF-Actions
 
-Supports indentation syntax, allowing consecutive blank lines.
-Must be the first action within the alone or factors method.
+See [ABNFA Definition of ABNFA][], A ABNFA grammar generates a meta instance,
+including All node type descriptions, specific configurations,
+and custom configurations. Meta is the AST that ABNFA generates.
 
-Loding:
+The configuration in ' Abnf-actions ' begins with ' to-',
+otherwise the node type description.
 
-    ACTIONS-OUTDENT       Tab indentation(%x09)
-    ACTIONS-OUTDENT-SP-N  N Spaces indentation(%x20)
-    ACTIONS-OUTDENT-SP    Spaces indentation, Automatic calculation.
-
-Must be in the factors [0], the alone or factors method can create new factors.
-
-    OUTDENT            Automatic calculation aligned
-    OUTDENT-aligned    Allow subsequent lines to align with the first line
-    OUTDENT-       === OUTDENT-aligned
-    OUTDENT-0      === OUTDENT- And is outdent when no indentation
-
-Algorithm:
-
-After executing OUTDENT, the indentation of the current line is calculated firstIndent, and the indentation decision is made in the subsequent CRLF action:
-
-    Write down the current position
-    Match 1 * CRLF, failed to return false.
-    Write down the current position
-    Calculate the indentation and determine the indentation by formula:
-      Indent <firstIndent ||! Aligned && indent == firstIndent
-    Is outdent, set the offset to failure, and return false
-    Un-outdent, set offset successful + indent, return true.
-
-Example: simplified Python if-else
+Example: See [JSON.abnf][]
 
 ```abnf
-first      = ACTIONS-OUTDENT ACTIONS-DENY ACTIONS-FLAG topStmts
-topStmts   = *CRLF statement *(CRLF statement) *CRLF
-stmts      = OUTDENT CRLF statement *(CRLF statement)
-statement  = if-here / expression
+ABNF-Actions =
+  ; Custom configuration
+  to-language 'JSON'
+  to-fileTypes ['json']
+  to-scopeName 'source.json'
+  to-description 'JSON to AST'
 
-if         = "if" 1*SP ifCell-body--if
-ifCell     = OUTDENT- expression--test ":" *SP
-             (expression--body / stmts-body-body) FLAG
-             [CRLF (else-here / elif-here)]
-elif       = "elif" 1*SP ifCell-body-orelse-if FLAG
-else       = "else:" *SP (expression--orelse / stmts-body-orelse) FLAG
+  ; Specific configuration
+  to-locfield    'loc'   ; The field-name of location
+  to-typefield   'type'  ; The field-name of type
 
-ident      = Ident-lit- DENY-keywords [Call-amend-func-]
-keywords   = "class"/ "if" / "else" / "elif"
-Ident      = ALPHA *(ALPHA / DIGIT)
-Num        = 1*DIGIT
+  ; AST node type described.
 
-expression = (ident / Num-lit- / Set-body- / List-body- / Dict-body- / group-alone) *WSP
-elements   = OUTDENT- [CRLF] expression *("," *WSP [CRLF] expression ) [CRLF]
-group      = "(" OUTDENT- [CRLF] expression [CRLF] ")"
+  ; Structure
+  Object (
+    ; Fields Description.
+    children  ARRAY<Property>
+  )
 
-List       = "[" [elements-body-elts FLAG] "]"
-Set        = "{" [elements-body-elts FLAG] "}"
+  Array (
+    children ARRAY<Object, Array, Literal>
+  )
 
-Dict       = "{" [pairs] "}"
-pair       = expression-alone-keys FLAG ":" *WSP expression-alone-values FLAG
-pairs      = OUTDENT- [CRLF] pair *("," *WSP [CRLF] pair) [CRLF]
+  Literal (
+    value <null, BOOL, STRING, INT, FLOAT>
+  )
 
-Call       = args-body-args FLAG
-args       = "()" / "(" [elements] ")"
+  Identifier  (
+    ; Declaration STRING type with initial value
+    value  ''
+  )
 
-WSP    = SP / HTAB
-CWSP   = WSP / CRLF
-HTAB   = %x09
-SP     = %x20
-ALPHA  = %x41-5A / %x61-7A
-DIGIT  = %x30-39
+  Property    (
+    key   <Identifier>
+    value <Object, Array, Literal>
+  )
+
+JSON-text = ws value ws
+
+value = object--Object(value)
+      / array--Array(value)
+      / string--Literal(value)
+      / number--Literal(value)
+      / boolean--Literal(value)
+      / null--Literal(value)
+; omitted...
 ```
 
-### RAW
+Most `Action` is a description of the type,
+which makes ABNFA the ability to describe the node type.
 
-Check whether the raw attribute value of the previous action satisfies the condition.
+### repeat
 
-    RAW-IS-tail   ---> prev.raw == tail
-    RAW-UN-tail   ---> prev.raw != tail
+In the following form:
 
-Where `tail` is 'IS-' or 'UN-' after all the strings.
+1. `*refer--action`    action is always executed
+1. `[refer--action]`   action to be executed after refer successful 1st
+1. `min*refer--action` action to be executed after refer successful >=min
 
-Example: ±Infinity, ±NaN
+### mixins
+
+mixins is sugar for mixed fields.
+
+In the following example `repeat mixins` same as `min %d1` and `max %d1`.
 
 ```abnf
-first       = ACTIONS-RAW Float
+ABNF-Actions =
+  literal (
+    ; mixin type or embed type
+    repeat  mixins
+    value   ''
+    ; Declaration BOOL type with initial value
+    sensitive true
+  )
 
-Float       = float-leaf-Float / InfNaN---Float
-float       = [sign] 1*DIGIT "." 1*DIGIT
-InfNaN      = [sign-lit] 1*ALPHA-lit (
-                RAW-IS-NaN / RAW-IS--Infinity /
-                RAW-IS--NaN / RAW-IS-Infinity
-              )
+  action  (
+    repeat  mixins
+    refer   ''
+    name    ''
+    args    array<STRING>
+  )
 
-sign        = "-"
-ALPHA       = %x41-5A / %x61-7A
-DIGIT       = %x30-39
+  repeat  (
+    ; Declaration INT type with initial value
+    min %d1
+    max %d1
+  )
 ```
 
-### DENY
+### default-value
 
-If the raw attribute of the previous action is equal to the optional string provided by rulename, terminate the matching process.
-
-    DENY-rulename-[rulename]-[rulename]
+The default value can be set for STRING, BOOL, INT type fields.
 
 Example:
 
 ```abnf
-first      = ACTIONS-DENY Identifier- DENY-keywords-literal
-Identifier = ALPHA *(ALPHA / DIGIT)
-keywords   = "if" / "else" / "function"
-literal    = "true" / "false" / "null"
-ALPHA      = %x41-5A / %x61-7A
-DIGIT      = %x30-39
+ABNF-Actions =
+  type (
+    b true      ; The default value is BOOL true
+    i %d1       ; The default value is INT 1
+    s ''        ; The default value is STRING ''
+    n <STRING>  ; There is no default value
+  )
 ```
 
-### NON
+### to-nullable
 
-If the raw attribute of the previous action is not equal to the optional string provided by rulename.
+Configure a list of common type names that allow values of `null`.
 
-    NON-rulename-[rulename]-[rulename]
+    to-nullable <BOOL,STRING>
 
-The difference between the plugin and DENY:
+There are differences between languages on whether a type allows `null`,
+and there is no limit to JavaScript. Other languages may need it.
 
-   1. Allow raw to be null
-   2. Does not terminate the match
+### to-typefield
 
-### SWAP
+Configure the name of the field that holds the name of the type.
+The default value is 'type'. Empty '' indicates no saving.
 
-Swap the properties of the first two actions, key and flag.
+    to-typefield 'type'
 
-    SWAP
+### to-locfield
 
-# Demos
+Configure the name of the field that holds the name of the type.
+The default value is 'type'. Empty('') indicates no saving.
 
-This section shows the first rule name that indicates the target object,
- setting the member (attribute or element) to the target.
+    to-locfield 'loc'
 
-Sample `0234 678` is a space-separated two values,
- expect the result as an array of values:
+### to-crlf
+
+Configure line breaks, default '' for automatic identification.
+
+    to-crlf '\n'
+    to-crlf '\r'
+    to-crlf '\r\n'
+
+### to-indent
+
+Configure the first line of indentation. The default is '' means
+the first indent is automatically extracted.
+
+    to-indent ' '
+    to-indent '\t'
+
+### to-mode
+
+Configure data source type.
+
+    to-mode string
+    to-mode byte
+    to-mode bits
+
+1. string The default value indicates that the data source is a string.
+1. byte   The data source is Uint8Array or byte (integer) array.
+1. bits   Supports byt-mode for bit matching `%b`.
+
+Matching characters or strings in bits-mode must be 8bit aligned.
+
+### to-infix
+
+Configure two-dollar infix expression node name and operator precedence.
+
+Example:
 
 ```abnf
-Array     = 1*(Number- [SP])
-Number    = 1*DIGIT-lit
-DIGIT     = %x30-39
-SP        = %x20
+ABNF-Actions =
+  to-description  'Binary infix expression'
+
+  to-infix (
+    node     'BinaryExpr'
+    left     'x'
+    operator 'op'
+    right    'y'
+    priority [
+      ; Highest to lowest priority
+      [ '*' / '/' ]
+      [ '+' / '-' ]
+      [ 'AND' ]
+      [ 'OR' ]
+    ]
+  )
+
+  BinaryExpr (
+    x   <Expr>
+    op  ''
+    y   <Expr>
+  )
+
+  Expr <BinaryExpr, UnaryExpr, Number, String, CallExpr, DotExpr, IndexExpr>
+  ; omitted ...
 ```
 
-Sample `0,234 678` adds thousands separators:
+Schematic example:
 
 ```abnf
-Array  = 1*(Number- [SP])
-Number = 1*3DIGIT-lit *("," 3DIGIT-lit)
-DIGIT  = %x30-39
-SP     = %x20
+expr =
+  factor (
+    1*(operator factor) to--type(BinaryExpr)
+  )
+
+factor =
+    group--pending
+  / UnaryExpr / Number / String / CallExpr / DotExpr / IndexExpr
+
+group = '(' expr ')'
+
 ```
 
-The sample `-0,234 678` adds a negative sign bit, Number is non-structure:
+Note that `factor` does not need to contain `binaryexpr` and builds it.
+
+## Actions
+
+An Action is a reference to an additional parameter that describes how to work
+with data, such as the node type and the fields assigned to the parent node.
+
+Most of the `action` in both forms of action is the type name.
+See below for details.
+
+    to--action
+    to--action(arguments...)
+    refer--action
+    refer--action(field, arguments...)
+
+Example:
 
 ```abnf
-Array  = 1*(Number- [SP])
-Number = [sign-lit] 1*3DIGIT-lit *("," 3DIGIT-lit)
-sign   = "-"
-DIGIT  = %x30-39
-SP     = %x20
+ABNF-Actions =
+  to-language  'ABNFA'
+  ; omitted ...
+  action  (
+    repeat  mixins
+    refer   ''  ; rulename or 'to'
+    name    ''  ; typename or action-method
+    factor  ARRAY<STRING>
+  )
+
+; omitted ...
+
+action  =
+  rulename--STRING(refer) ['--' (
+      1*ALPHA--STRING(name) [
+        '(' *SP argument *(*SP ',' *SP argument ) *SP ')'
+      ]
+    / to--fault('Invalid action of %s', refer)
+  )]
+
+argument =
+    "'" *quotes-vchar--STRING(factor, unescape) "'"
+  / number-val--pending(factor)
+  / field--STRING(factor)
+  / to--fault('Invalid arguments on %s', refer)
+
+quotes-vchar =
+    %x20-21 / %x23-26 / %x28 / %x2A-5B / %x5D-7E
+  / '\' (
+      '"' /          ; quotation mark  U+0022
+      "'" /          ; quotation mark  U+0027
+      '\' /          ; reverse solidus U+005C
+      'x' 2HEXDIG /  ; xXX             U+XX
+      'u' (          ; uXXXX           U+XXXXXX
+        '{' 1*6HEXDIG '}' /
+        4HEXDIG
+      )
+    )
+  ; ')' = '\u0029'
+
+field-prefix = ['/' / '?']
+
+field = field-prefix ALPHA *(ALPHA / DIGIT / '-' / '_')
+; omitted ...
 ```
 
-Output:
+### Common-types
 
-```yaml
-- start: 0
-  end: 6
-  raw: '-0234'
-  method: lit
-  type: Number
-- start: 7
-  end: 10
-  raw: '678'
-  method: lit
-  type: Number
-```
+In addition to customizing types in meta,
+this package supports the following common types:
 
-The sample `+-0,234 678` adds the sign bit operation. Number is the structure.
+1. BOOL     Boolean
+1. BYTE     A byte that is converted to INT in this implementation
+1. RUNE     A Unicode code-point that is converted to INT in this implementation
+1. STRING   String
+1. INT      Integral family: I8, I16, I32, I64, U8, U16, U32, U64
+1. FLOAT    Float family: F32, F64, F128, F256
+1. BYTES    Direct storage of binary raw data
+1. ARRAY    Array, `x ARRAY<element-type>`
+1. UNIQUE   An array without duplicate element values, `x UNIQUE<element-type>`
+1. OBJECT   Key-value object with String key, `x OBJECT<Value-type>`
+
+### field-prefix
+
+Field prefixes can be used when assigning a node to a field in a parent node:
+
+1. /  The root node is the target parent node and must have the specified field
+1. ?  Trace up the parent node of the specified field
+
+The ARRAY, UNIQUE and OBJECT does not receive data with field prefix.
+
+### refer--ARRAY
+
+To generate a common ARRAY instance, Ignore `field` of child element.
+
+    refer--ARRAY
+    refer--ARRAY(field)
+
+Directly using the form of adding elements to ARRAY is more beneficial
+to type checking.
+
+    refer--element-type(ARRAY-field)
+
+That is, when the target is ARRAY, there are two ways to choose:
+
+1. Generates an array at once: refer--ARRAY(field)
+1. Add an element: refer--element-type(ARRAY-field)
+
+### refer--UNIQUE
+
+To generate a common UNIQUE instance, Ignore `field` of child element.
+
+    refer--UNIQUE
+    refer--UNIQUE(field)
+
+Directly using the form of adding elements to UNIQUE is more beneficial
+to type checking.
+
+    refer--element-type(UNIQUE-field)
+
+That is, when the target is UNIQUE, there are two ways to choose:
+
+1. Generates an unique array at once: refer--UNIQUE(field)
+1. Add an element: refer--element-type(UNIQUE-field)
+
+子元素类型可以是: BOOL, BYTE, RUNE, STRING, INT 家族, FLOAT 家族
+
+### refer--OBJECT
+
+The Key-value object that generates the STRING as a key.
+
+    refer--OBJECT
+    refer--OBJECT(field)
+
+Generated internally (refer)-specific `key`, `val` field records.
+
+    in-refer--STRING(key)
+    in-refer--val-type(val)
+
+If `field` already exists, merge Key-value.
+
+### refer--BYTES
+
+Generates a generic BYTES instance that holds matching binary raw data.
+
+    refer--BYTES
+    refer--BYTES(field, decode)
+
+Decoder parameter decode is required under string-mode.
+
+### refer--RUNE
+
+For Unicode code-point, check code-point legality. See `to-refer--INTx`.
+
+### refer--TIME
+
+To generate a generic common time instance.
+
+    refer--TIME
+    refer--TIME(field, decode)
+
+TIME's specific value (structure) is determined by decode, `new Date(source)` is default.
+
+### to--true
+
+Set field value to BOOL `true`.
+
+    to--true
+    to--true(field)
+
+### to--false
+
+Set field value to BOOL `false`.
+
+    to--false(field)
+
+### to--null
+
+Set field value to `null`.
+
+    to--null(field)
+
+### to--Infinity
+
+Set FLOAT-family field value to ±Infinity.
+
+    to--Infinity(field)
+    to--Infinity(field, -)
+
+### to--NaN
+
+Set FLOAT-family field value to NaN.
+
+    to--NaN(field)
+
+### to--discard
+
+Discard (remove, eject) previous action.
+
+    to--discard
+
+### to--type
+
+Confirm the type of the current node. See `refer--pending`.
+
+    to--type(typename)
+
+### refer--pending
+
+Used when the `refer` generated type is determined by the internal `to--type`.
+
+    refer--pending
+    refer--pending(field)
+
+`To--type` must be used within `refer` to determine type-name.
+
+Example:
 
 ```abnf
-Array  = 1*(Number- [SP])
-Number = *sign-lit-sign 1*3DIGIT-lit-raw *("," 3DIGIT-lit-raw)
-sign   = "-" / "+"
-DIGIT  = %x30-39
-SP     = %x20
+example = number--pending
+number =
+  1*DIGIT (
+      '.' 1*DIGIT to--type(FLOAT)
+    / to--type(INT)
+  )
 ```
 
-Output:
+Reduce level depth with `to--discard`, See [ABNFA Definition of ABNFA][]
 
-```yaml
-- start: 0
-  end: 7
-  type: Number
-  factors:
-    - start: 0
-      end: 2
-      raw: +-
-      method: lit
-      key: sign
-    - start: 2
-      end: 7
-      raw: '0234'
-      method: lit
-      key: raw
-- start: 8
-  end: 11
-  type: Number
-  factors:
-    - start: 8
-      end: 11
-      raw: '678'
-      method: lit
-      key: raw
-```
+### to-refer--STRING
 
-# Examples
+Generates a generic STRING value to a field that supports decoding and string concatenation.
 
-Four expression expressions that support thousands of delimiter values
+    to--STRING(field, string-value)
+    to--STRING(field, 'string value')
+    to--STRING(field, string-value, concat-dir)
+    refer--STRING
+    refer--STRING(field, decode)
+    refer--STRING(field, decode, concat-dir)
+
+Built-in decode:
+
+1.`unescape` Decode a STRING with [Escape_character][]
+
+Support and previous data stitching (not defaults), Optional concat-dir:
+
+1. `suffix` To the tail stitching if a field record is found
+1. `prefix` Stitching to the head if a field record is found
+1. Other not stitching
+
+### to-refer--INT
+
+Generates a generic INT-family value to a field
+
+    to--I8(field, -1)
+    to--BYTE(field, 1)
+    to--U64(field, 10000)
+    to--INT(field, -1)
+    refer--INT
+    refer--U8
+    refer--BYTE
+    refer--INT(field, radix)
+    refer--INT(field, LE)
+    refer--INT(field, BE)
+    refer--INT(field, ME)
+
+Options:
+
+1. radix The value is the base of the 2,8,10,16, which defaults to 10.
+1. `LE`  Little-Endian under byte-mode or bits-mode
+1. `BE`  Big-Endian under byte-mode or bits-mode
+1. `ME`  Middle-Endian under byte-mode or bits-mode
+
+The range of values supported by this implementation: `Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`
+
+### to-refer--FLOAT
+
+Generates a generic FLOAT-family value to a field
+
+    to--FLOAT(field, -1.0)
+    to--FLOAT(field, 1.0E10)
+    to--FLOAT(field, 1.0e10)
+    refer--FLOAT
+    refer--FLOAT(field)
+    refer--FLOAT(field, decode)
+
+Built-in decode: 参见 [IEEE 754][]
+
+1. `default`  Decimal floating-point number string, default decode.
+1. `binary`   binary floating-point data
+1. `decimal`  decimal floating-point data
+
+### to--copy
+
+Copy the value of an existing field to a new field.
+
+    to--copy(existing-field, new-field)
+
+### to--move
+
+Change all specified field names in the current node with a different name.
+
+    to--move('', another-field)
+    to--move(field, another-field)
+    to--move(field, '')
+
+### to--turn
+
+Rule transfer.
+
+    to--turn(rulename, another-rulename)
+
+The `rulename` rule is referred to `another-rulename` when it is transferred.
+Returns a normal reference when `another-rulename` equals `rulename`.
+
+### to--fault
+
+Ends the match and returns (throws) the error message,
+the current row and column position of the suffix,
+with a total length of no more than 60 columns.
+
+    to--fault('message ...')
+    to--fault('message ...', -10)
+    to--fault('message %s ...')
+    to--fault('message %q ...')
+    to--fault('message %s ...', offset)
+    to--fault('message %q ...', offset)
+
+If you include `%s` or `%q`, extract raw data from `offset`.
+
+1. `%s`     Extract the original strings
+1. `%q`     Extract the original string with double quotes
+1. `offset` Negative offsets or an existing field. default is the current position.
+
+Output example:
+
+    Illegal configuration to-infix:10:4
+    Unclosed double quotes to-:100:4
+
+### to--eol
+
+Match line breaks according to `to-crlf` configuration and record line
+and column position information.
+
+    to--eol
+
+### to--indent
+
+Match line indentation, language for indentation syntax.
+
+    to--indent        which is equivalent '>>'
+    to--indent('>>')  Indentation is greater than the parent node
+    to--indent('>1')  Indent more than parent 1
+    to--indent('>=')  Indentation is not less than the parent node
+    to--indent('==')  Indentation equals parent
+    to--indent('<=')  Indentation is less than or equal to the parent node
+    to--indent('<1')  Indent less than parent 1
+    to--indent('<<')  Indentation is less than the parent node
+
+Usually in addition to the first line indent `to--indent` should be used
+after `to--eol`.
+
+Example:
 
 ```abnf
-Expression   = (Num- /
-                Unary-prefix- /
-                group-alone)
-               [Binary-infix-left-]
+first-indent =
+  2SP to--indent  / HTAB to--indent
 
-group        = "(" Expression ")"
-Unary        = minus-lit-op Expression--elt
-Binary       = operator-binary-op Expression--right
+IF =
+  'if' 1*SP cond-expr  1*SP 'then'
+    to--eol to--indent('>1') body
+  to--eol to--indent('==') 'end' to--eol
 
-Num          = 1*3DIGIT-lit *("," 3DIGIT-lit)
-minus        = "-"
-operator     = ("+" / "-") / ("*" / "/")
-DIGIT        = %x30-39
+ARRAY =
+  '[' [INDENT-GT] expr *(',' [INDENT-GT] expr) [INDENT-EQ] ']'
 ```
 
-Output of the sample `-1-2*-3`:
+### to--unicode
 
-```yaml
-- start: 0
-  end: 7
-  type: Binary
-  method: infix
-  key: ''
-  precedence: 1
-  factors:
-    - start: 0
-      end: 2
-      type: Unary
-      method: prefix
-      factors:
-        - start: 0
-          end: 1
-          raw: '-'
-          method: lit
-          key: op
-        - start: 1
-          end: 2
-          raw: '1'
-          method: lit
-          type: Num
-          key: elt
-      key: left
-    - start: 2
-      end: 3
-      raw: '-'
-      method: operator
-      key: op
-      precedence: 1
-    - start: 3
-      end: 7
-      type: Binary
-      method: infix
-      key: right
-      precedence: 2
-      factors:
-        - start: 3
-          end: 4
-          raw: '2'
-          method: lit
-          type: Num
-          key: left
-        - start: 4
-          end: 5
-          raw: '*'
-          method: operator
-          key: op
-          precedence: 2
-        - start: 5
-          end: 7
-          type: Unary
-          method: prefix
-          key: right
-          factors:
-            - start: 5
-              end: 6
-              raw: '-'
-              method: lit
-              key: op
-            - start: 6
-              end: 7
-              raw: '3'
-              method: lit
-              type: Num
-              key: elt
-```
+Matching Data with Unicode Generic-Classification Names. See [tr44][].
 
-# License
+    to--unicode(General-Category)
+
+Example:
+
+    to--unicode(Letter)
+    to--unicode(Lo,Lu)
+
+*NodeJS 环境需要启用参数 `--harmony_regexp_property`*
+
+## License
 
 BSD 2-Clause License
 
-Copyright (c) 2016, YU HengChun <achun.shx@qq.com>
+Copyright (c) 2018, YU HengChun <achun.shx@qq.com>
 All rights reserved.
 
 [ABNF]: https://tools.ietf.org/html/rfc5234
+[Core Rules]: https://tools.ietf.org/html/rfc5234#appendix-B.1
+[tr44]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+[Base64]: https://tools.ietf.org/html/rfc4648#section-4
+[Escape_character]: https://en.wikipedia.org/wiki/Escape_character
+[IEEE 754]: https://en.wikipedia.org/wiki/IEEE_754
+[ABNFA Definition of ABNFA]: https://github.com/ZxxLang/abnfa/blob/master/grammar/abnfa.abnf
+[JSON.abnf]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json.abnf
+[JSON parser]: https://github.com/ZxxLang/abnfa/blob/master/grammar/json-parser.abnf
+[DEVLOPERS.md]: https://github.com/ZxxLang/abnfa/blob/master/DEVLOPERS.md
+[ABNF-sublime-syntax]: https://github.com/ZxxLang/ABNF-sublime-syntax
