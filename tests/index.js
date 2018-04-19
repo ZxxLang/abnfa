@@ -18,12 +18,13 @@ let
   path = require('path'),
 
   test = require('tape'),
+  aa = require('../index'),
   coder = require('../lib/coder'),
-  names = coder.formnames,
-  forms = coder.formulas,
-  jscoder = require('../lib/js-coder'),
-  builder = require('../lib/builder'),
-  pattern = require('../lib/patternize');
+  names = aa.coder.formnames,
+  forms = aa.coder.formulas,
+  jscoder = aa.jscoder,
+  builder = aa.builder,
+  pattern = aa.patternize;
 
 function read(filename) {
   return fs.readFileSync(
