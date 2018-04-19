@@ -6,14 +6,18 @@
 
 ## patternize
 
-patternize 转换 metadata 中所有的 `to--action`, `refer--action` 为 index 结构.
+patternize 转换 meta 中所有的 `to--action`, `refer--action` 为 index 结构.
 
 对于 ABNFA 文法的 source, 我们的目标是通过 lang-coder 生成代码, 供 builder 调用.
 patternize 生成的 index 结构使得 lang-coder 生成的函数只需要有一个 builder 参数.
 
+    index.refer 或 index.action 为 0 时表示无引用规则或无动作, 不允许同时为 0.
+    因为第二条规则对应的 refer 编号为 0, 所以不允许第二条规则被引用
+    如果需要引用第二条, 可以增加一条规则如: result = original-second-rule-name
+
 ## lang-coder
 
-lang-coder 负责编译 patternize 后的 metadata 到具体语言的代码(coder).
+lang-coder 负责编译 patternize 后的 meta 到具体语言的代码(coder).
 
 本包实现了编译到 JavaScript 的 js-coder.
 
@@ -99,7 +103,7 @@ decode([0b00000001], 7)
 
 ## Bootstrap
 
-第一个 metadata 是手工写的 [grammar](lib/grammar.js), 并实现自举:
+第一个 meta 是手工写的 [grammar](lib/grammar.js), 并实现自举:
 
 ```text
 coder0 = js-coder( patternize( grammar ) )
@@ -108,11 +112,9 @@ coder  = js-coder( patternize( builder(coder1).parse(abnfa.abnf) ) )
 assert(coder === coder1)
 ```
 
-## type
+## result
 
-对于最终结果来说不止有自定义结构体和终结值, 风格和注解描述其它类型.
-
-参见 [json.abnf][] 和 [json-parser.abnf][] 了解 AST 和非 AST 的区别.
+最终结果可能是 AST 或 Non-AST 的, 参见 [json.abnf][] 和 [json-parser.abnf][].
 
 在 [ABNFA Definition of ABNFA][] 中支持三种类型描述:
 

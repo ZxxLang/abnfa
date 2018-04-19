@@ -60,16 +60,21 @@ array  =
   '[' ws [ value *( ws ',' ws value ) ws ] ']'
   to--move(value, children)
 
-number    = num-val--INT(value)
+number = number-val--pending(value)
 
-num-val   = [ '-' ] ('0' / ( %x31-39 *DIGIT))
-            [ float-val to--type(FLOAT) ]
+number-val = [ '-' ] int (
+    frac [ exp ] to--type(FLOAT)
+    / exp to--type(FLOAT)
+    / to--type(INT)
+  )
 
-float-val = E / '.' 1*DIGIT [E]
+exp = "E" [ '-' / '+' ] 1*DIGIT
 
-E         = "e" [ '-' / '+' ] 1*DIGIT
+frac = '.' 1*DIGIT
 
-string    = '"' *char--STRING(value) '"'
+int = '0' / ( %x31-39 *DIGIT )
+
+string    = '"' *char--STRING(value, unescape) '"'
 
 boolean   = 'true' to--true(value) /
             'false' to--false(value)

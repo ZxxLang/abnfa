@@ -574,12 +574,15 @@ concat 表示和之前的数据(而不是缺省值)进行拼接, 可选值:
     refer--FLOAT
     refer--FLOAT(field)
     refer--FLOAT(field, decode)
+    refer--FLOAT(field, decode, INTfirst)
 
-其中 `decode` 表示解码算法: 参见 [IEEE 754][]
+解码参数 `decode` 可选: 参见 [IEEE 754][]
 
 1. `default`  Base 10 浮点数字符串, 缺省值.
 1. `binary`   2,4,8,16,32 字节比特序列, Base 2  交换格式
 1. `decimal`  2,4,8,16,32 字节比特序列, Base 10 交换格式
+
+参数 `INTfirst` 表示转换为 `INT` 家族类型, 如果无损失的话.
 
 ### to--copy
 

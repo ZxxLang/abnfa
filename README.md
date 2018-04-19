@@ -588,12 +588,15 @@ Generates a generic FLOAT-family value to a field
     refer--FLOAT
     refer--FLOAT(field)
     refer--FLOAT(field, decode)
+    refer--FLOAT(field, decode, INTfirst)
 
 Built-in decode: 参见 [IEEE 754][]
 
 1. `default`  Decimal floating-point number string, default decode.
 1. `binary`   binary floating-point data
 1. `decimal`  decimal floating-point data
+
+INTfirst that if there is no loss, convert to INT type.
 
 ### to--copy
 
